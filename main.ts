@@ -1,6 +1,10 @@
 import { Plugin } from 'obsidian';
 export default class lineArrange extends Plugin {
-	onload(): void {
-		console.log("Hello Internet!");
+	 onload() {
+		this.addCommand({
+			id: 'sort-lines',
+			name: 'Sort Lines',
+			editorCallback: (editor, view) => this.sortLines(editor)
+		});
 	}
 }
