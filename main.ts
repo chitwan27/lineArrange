@@ -1,10 +1,13 @@
-import { Plugin } from 'obsidian';
+import { Editor, Plugin } from 'obsidian';
 export default class lineArrange extends Plugin {
-	 onload() {
+	async onload() {
 		this.addCommand({
 			id: 'sort-lines',
 			name: 'Sort Lines',
-			editorCallback: (editor, view) => this.sortLines(editor)
+			editorCallback: (editor: Editor) => {
+				const selection = editor.getSelection();
+				editor.replaceSelection(selection.sortLines());
+			},
 		});
 	}
 }
