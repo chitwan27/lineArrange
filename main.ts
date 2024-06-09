@@ -34,9 +34,14 @@ class Arrangement {
 
     constructor(linesList: string[]) {
         //Creates a key for each unique line-width.
-        //And associates line to respective width slot.
+        //And associates line to respective slot.
         linesList.forEach(line => {
-            this[lineWidth(line)] = line;
+            if (!(lineWidth(line) in this)) {
+                this[lineWidth(line)] = line;
+            }
+            else {
+                this[lineWidth(line)] = this[lineWidth(line)].concat("\n"+line);
+            }
         });
     }
 }
