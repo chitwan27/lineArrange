@@ -25,7 +25,7 @@ function lineWidth(line: string): number {
     if (!context) {
         throw new Error('Failed to get 2D context');
     }
-	context.font = '16px San-serif';
+	context.font = '16px "Segoe UI", Arial, sans-serif';
 	return Math.round(10000*(context.measureText(line).width));
 }
 
