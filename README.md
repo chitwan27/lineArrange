@@ -1,11 +1,16 @@
-# Obsidian Line Arrange
+# Line Arrange
 
-### This is a small Obsidian plugin to either sort a selected set of lines by their visible width or shuffle them randomly.
+## This is a small plugin for Obsidian that allows one to either sort a set of selected lines by their visible width or shuffle them randomly.
 
 ## Features
 
 - **Sort Lines by Width**: Arrange lines based on their visual length.
+
+<img src=".\assets\sorted.png" alt="Sorted Lines" width="auto" height="150px" />
+
 - **Shuffle Lines Randomly**: Randomly arrange the selected lines.
+
+<img src=".\assets\shuffled.png" alt="Sorted Lines" width="auto" height="150px" />
 
 ## Installation
 
@@ -23,9 +28,18 @@
 ## Usage
 
 1. Open a note and select the lines you want to arrange.
+
+   <img src=".\assets\select.png" alt="Select Lines Usage" width="auto" height="150px" />
+
+
 2. Use the command palette (`Ctrl/Cmd + P`) and type:
    - `Sort Lines` to arrange lines based on their apparent width.
+
+   <img src=".\assets\sort.png" alt="Sort Lines Usage" width="auto" height="150px" />
+
    - `Shuffle Lines` to randomize the order of the selected lines.
+
+   <img src=".\assets\shuffle.png" alt="Shuffle Lines Usage" width="auto" height="150px" />
 
 ## Contributing
 
@@ -34,7 +48,7 @@
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/chitwan27/lineArrange/blob/main/LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/chitwan27/lineArrange#MIT-1-ov-file) file for details.
 
 ## Contact
 
