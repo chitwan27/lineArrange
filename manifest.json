@@ -3,9 +3,8 @@
 	"name": "Line Arrange",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "This is a small plugin that allows one to either sort a set of selected lines by their visible width or shuffle them randomly.",
+	"description": "Sort selected lines by their width or shuffle them randomly.",
 	"author": "Chitwan Singh",
 	"authorUrl": "https://github.com/chitwan27",
-	"fundingUrl": "",
 	"isDesktopOnly": false
 }
