@@ -10,16 +10,34 @@ export default class lineArrange extends Plugin {
 				editor.replaceSelection(sortLines(selection));
 			},
 		});
+        this.addCommand({
+			id: 'shuffle-lines',
+			name: 'Shuffle Lines',
+			editorCallback: (editor: Editor) => {
+				const selection = editor.getSelection();
+				editor.replaceSelection(shuffleLines(selection));
+			},
+		});
 	}
+}
+
+function shuffleLines(orgText: string) {
+    const lines = orgText.split("\n");
+    const arr2 = new Arrangement(lines, randomLineWidth);
+    return orderedText(arr2);
 }
 
 function sortLines(orgText: string): string {
     const lines = orgText.split("\n"); 
-    const arr1 = new Arrangement(lines); 
+    const arr1 = new Arrangement(lines, realLineWidth); 
     return orderedText(arr1);
 }
 
-function lineWidth(line: string): number {
+function randomLineWidth(line: string): number {
+    return Math.round(10000*Math.random());
+}
+
+function realLineWidth(line: string): number {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     if (!context) {
@@ -32,15 +50,15 @@ function lineWidth(line: string): number {
 class Arrangement {
     [width: number]: string;
 
-    constructor(linesList: string[]) {
+    constructor(linesList: string[], lineFunction: (line: string) => number) {
         //Creates a key for each unique line-width.
         //And associates line to respective slot.
         linesList.forEach(line => {
-            if (!(lineWidth(line) in this)) {
-                this[lineWidth(line)] = line;
+            if (!(lineFunction(line) in this)) {
+                this[lineFunction(line)] = line;
             }
             else {
-                this[lineWidth(line)] = this[lineWidth(line)].concat("\n"+line);
+                this[lineFunction(line)] = this[lineFunction(line)].concat("\n"+line);
             }
         });
     }
