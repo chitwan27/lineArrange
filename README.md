@@ -48,7 +48,7 @@
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/chitwan27/lineArrange#MIT-1-ov-file) file for details.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/chitwan27/lineArrange/blob/master/LICENSE) file for details.
 
 ## Contact
 
