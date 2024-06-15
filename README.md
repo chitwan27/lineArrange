@@ -1,6 +1,6 @@
 # Line Arrange
 
-## This is a small plugin for Obsidian that allows one to either sort a set of selected lines by their visible width or shuffle them randomly.
+## This is a small plugin for Obsidian that allows one to either sort a set of selected lines by their visible width or shuffle them randomly as per need.
 
 ## Features
 
