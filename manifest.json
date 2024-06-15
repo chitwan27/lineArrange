@@ -3,7 +3,7 @@
 	"name": "Line Arrange",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "This is a small Obsidian plugin to either sort a selected set of lines by their visible width or shuffle them randomly.",
+	"description": "This is a small plugin that allows one to either sort a set of selected lines by their visible width or shuffle them randomly.",
 	"author": "Chitwan Singh",
 	"authorUrl": "https://github.com/chitwan27",
 	"fundingUrl": "",
