@@ -34,7 +34,10 @@ function sortLines(orgText: string): string {
 }
 
 function randomLineWidth(line: string): number {
-    return Math.round(10000*Math.random());
+    if (line.length > 0)
+        return Math.round(10000*(Math.random()+1));
+    else
+        return 0;
 }
 
 function realLineWidth(line: string): number {
@@ -66,10 +69,8 @@ class Arrangement {
 
 function orderedText(orderedLines: Arrangement): string {
     let finalText = "";
-    for (const width in orderedLines) {
-        if (Number(width) > 0) {
-                finalText += (orderedLines[Number(width)] + '\n');
-        }
+    for (const lineKey in orderedLines) {
+        finalText += (orderedLines[lineKey] + '\n');
     }
-    return finalText;
+    return finalText.trim();
 }
