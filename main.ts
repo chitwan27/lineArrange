@@ -25,6 +25,9 @@ export default class lineArrange extends Plugin {
 	}
 }
 
+const textSize = getComputedStyle(document.body).getPropertyValue("--font-text-size");
+const textFont = getComputedStyle(document.body).getPropertyValue("--font-text");
+
 // Function to sort lines based on their visual width
 function sortLines(orgText: string): string {
     const lines = orgText.split("\n"); // Split the original text into lines
@@ -39,7 +42,7 @@ function realLineWidth(line: string): number {
     if (!context) {
         throw new Error('Failed to get 2D context');
     }
-	context.font = '16px "Segoe UI", Arial, sans-serif'; 
+	context.font = textSize + " " + textFont; 
 	return Math.round(10000 * (context.measureText(line).width)); // Return the width as a normalised integer
 }
 
