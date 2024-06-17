@@ -6,7 +6,7 @@ export default class lineArrange extends Plugin {
 		// Add a command to sort lines in the editor
 		this.addCommand({
 			id: 'sort-lines',
-			name: 'Sort Lines',
+			name: 'Sort lines',
 			editorCallback: (editor: Editor) => {
 				const selection = editor.getSelection(); // Get the selected text
 				editor.replaceSelection(sortLines(selection)); // Replace selection with sorted lines
@@ -16,7 +16,7 @@ export default class lineArrange extends Plugin {
 		// Add a command to shuffle lines in the editor
 		this.addCommand({
 			id: 'shuffle-lines',
-			name: 'Shuffle Lines',
+			name: 'Shuffle lines',
 			editorCallback: (editor: Editor) => {
 				const selection = editor.getSelection(); // Get the selected text
 				editor.replaceSelection(shuffleLines(selection)); // Replace selection with shuffled lines
