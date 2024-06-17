@@ -33,11 +33,11 @@
 
 
 2. Use the command palette (`Ctrl/Cmd + P`) and type:
-   - `Sort Lines` to arrange lines based on their apparent width.
+   - `Sort lines` to arrange lines based on their apparent width.
 
    <img src=".\assets\sort.png" alt="Sort Lines Usage" width="auto" height="150px" />
 
-   - `Shuffle Lines` to randomize the order of the selected lines.
+   - `Shuffle lines` to randomize the order of the selected lines.
 
    <img src=".\assets\shuffle.png" alt="Shuffle Lines Usage" width="auto" height="150px" />
 
