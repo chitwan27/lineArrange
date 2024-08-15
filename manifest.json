@@ -1,7 +1,7 @@
 {
 	"id": "line-arrange",
 	"name": "Line Arrange",
-	"version": "1.0.0",
+	"version": "1.2.0",
 	"minAppVersion": "0.15.0",
 	"description": "Sort selected lines by their width or shuffle them randomly.",
 	"author": "Chitwan Singh",

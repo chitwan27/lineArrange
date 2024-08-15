@@ -12,6 +12,14 @@
 
 <img src=".\assets\shuffled.png" alt="Sorted Lines" width="auto" height="150px" />
 
+- **Sort Lines Lexically**: Arrange lines based on their alphanumerical order.
+
+<img src=".\assets\lexisrted.png" alt="Lexisorted Lines" width="auto" height="150px" />
+
+- **Reverse Selected Lines**: Reverse the order of the selected lines.
+
+<img src=".\assets\reversed.png" alt="Reversed Lines" width="auto" height="150px" />
+
 ## Installation
 
 1. **From within Obsidian**:
@@ -40,6 +48,14 @@
    - `Shuffle lines` to randomize the order of the selected lines.
 
    <img src=".\assets\shuffle.png" alt="Shuffle Lines Usage" width="auto" height="150px" />
+
+   - `Lexisort lines` to arrange lines based on their alphanumerical order.
+
+   <img src=".\assets\lexisrt.png" alt="Lexisort Lines Usage" width="auto" height="150px" />
+
+   - `Reverse lines` to reverse the order of the selected lines.
+
+   <img src=".\assets\reverse.png" alt="Reverse Lines Usage" width="auto" height="150px" />
 
 ## Contributing
 
