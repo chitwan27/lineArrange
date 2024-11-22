@@ -24,7 +24,7 @@ export default class lineArrange extends Plugin {
             },
         });
 
-        // Add a command to sort lines in the editor
+        // Add a command to visually sort lines in the editor
         this.addCommand({
             id: 'sort-lines',
             name: 'Sort lines',
@@ -43,6 +43,46 @@ export default class lineArrange extends Plugin {
                 editor.replaceSelection(shuffleLines(selection)); // Replace selection with shuffled lines
             },
         });
+
+        // Add a command to lexically sort blocks in the editor
+        this.addCommand({
+            id: 'lexisort-blocks',
+            name: 'Lexisort blocks',
+            editorCallback: (editor: Editor) => {
+                const selection = editor.getSelection(); // Get the selected text
+                editor.replaceSelection(lexiSortBlocks(selection)); // Replace selection with shuffled lines
+            },
+        });
+
+        // Add a command to reverse blocks in the editor
+        this.addCommand({
+            id: 'reverse-blocks',
+            name: 'Reverse blocks',
+            editorCallback: (editor: Editor) => {
+                const selection = editor.getSelection(); // Get the selected text
+                editor.replaceSelection(reverseBlocks(selection)); // Replace selection with shuffled lines
+            },
+        });
+
+        // Add a command to visually sort blocks in the editor
+        this.addCommand({
+            id: 'sort-blocks',
+            name: 'Sort blocks',
+            editorCallback: (editor: Editor) => {
+                const selection = editor.getSelection(); // Get the selected text
+                editor.replaceSelection(sortBlocks(selection)); // Replace selection with shuffled lines
+            },
+        });
+
+        // Add a command to shuffle blocks in the editor
+        this.addCommand({
+            id: 'shuffle-blocks',
+            name: 'Shuffle blocks',
+            editorCallback: (editor: Editor) => {
+                const selection = editor.getSelection(); // Get the selected text
+                editor.replaceSelection(shuffleBlocks(selection)); // Replace selection with shuffled lines
+            },
+        });
     }
 }
 
@@ -59,7 +99,7 @@ function lexiSortLines(orgText: string): string {
             srtLines += (line + '\n'); // Add each line to the returning text string
         }
         else {
-            srtLines = ('\n' + srtLines); 
+            srtLines = ('\n' + srtLines);
         }
     });
     return srtLines.trimEnd(); // Return the lexically sorted lines
@@ -138,4 +178,148 @@ function orderedText(orderedLines: Arrangement): string {
         finalText += (orderedLines[lineKey] + '\n'); // Append each line followed by a newline character
     }
     return finalText.trimEnd(); // Trim the final text to remove trailing newlines
+}
+
+// New Stuff!
+function sortBlocks(orgText: string): string {
+    const lines = orgText.split("\n"); // Split the original text into lines
+    const tree = buildTree(lines);             // Build a tree based on the lines and their levels
+    sortTree(tree);                            // Sort the tree hierarchically
+    const sortedLines = flattenTree(tree);     // Flatten the tree back to a sorted array of lines
+    return sortedLines.join("\n");       // Output the sorted text
+
+    // Recursive function to sort the tree
+    function sortTree(node: TreeNode): void {
+        // Sort children of the current node based on the line content
+        node.children.sort((a, b) => realLineWidth(a.line || '') - realLineWidth(b.line || ''));
+
+        // Recursively sort the children of each child node
+        node.children.forEach(child => sortTree(child));
+    }
+}
+
+function shuffleBlocks(orgText: string): string {
+    const lines = orgText.split("\n"); // Split the original text into lines
+    const tree = buildTree(lines);             // Build a tree based on the lines and their levels
+    sortTree(tree);                            // Sort the tree hierarchically
+    const sortedLines = flattenTree(tree);     // Flatten the tree back to a sorted array of lines
+    return sortedLines.join("\n");       // Output the sorted text
+
+    // Recursive function to sort the tree
+    function sortTree(node: TreeNode): void {
+        // Sort children of the current node based on randomness
+        node.children.sort((a, b) => randomLineWidth(a.line || '') - randomLineWidth(b.line || ''));
+
+        // Recursively sort the children of each child node
+        node.children.forEach(child => sortTree(child));
+    }
+}
+
+function lexiSortBlocks(orgText: string): string {
+    const lines = orgText.split("\n"); // Split the original text into lines
+    const tree = buildTree(lines);             // Build a tree based on the lines and their levels
+    sortTree(tree);                            // Sort the tree hierarchically
+    const sortedLines = flattenTree(tree);     // Flatten the tree back to a sorted array of lines
+    return sortedLines.join("\n");       // Output the sorted text
+
+    // Recursive function to sort the tree
+    function sortTree(node: TreeNode): void {
+        // Sort children of the current node based on the line alphabetically
+        node.children.sort((a, b) => (a.line || '').localeCompare(b.line || ''));
+
+        // Recursively sort the children of each child node
+        node.children.forEach(child => sortTree(child));
+    }
+}
+
+function reverseBlocks(orgText: string): string {
+    const lines = orgText.split("\n"); // Split the original text into lines
+    const tree = buildTree(lines);             // Build a tree based on the lines and their levels
+    sortTree(tree);                            // Sort the tree hierarchically
+    const sortedLines = flattenTree(tree);     // Flatten the tree back to a sorted array of lines
+    return sortedLines.join("\n");       // Output the sorted text
+
+    // Recursive function to sort the tree
+    function sortTree(node: TreeNode): void {
+        // Reverse the children of the current node
+        node.children.reverse();
+
+        // Recursively reverse the children of each child node
+        node.children.forEach(child => sortTree(child));
+    }
+}
+
+class TreeNode {
+    line: string | null;   // The line of text (null for the root node)
+    level: number;         // The level or depth in the hierarchy
+    children: TreeNode[];  // Children nodes
+
+    constructor(line: string | null, level: number) {
+        this.line = line;
+        this.level = level;
+        this.children = [];
+    }
+}
+
+// Function to get the level based on markdown structure and indentation
+function getLevel(line: string): number {
+    let level = 0;
+    const indentation = getIndentation(line);
+    // Check for Heading
+    if (/^\s*#\s*/.test(line)) {
+        const headingLevel = line.match(/^#+/)?.[0].length ?? 0;
+        level = headingLevel;
+        return level;
+    }
+    // Default case (plain text or code or list_item)
+    else {
+        level = 10 + indentation; 
+        return level;
+    }
+}
+
+// Function to get the number of leading spaces or tabs (indentation level)
+function getIndentation(line: string): number {
+    return line.match(/^\s*/)?.[0].length ?? 0;
+}
+
+// Function to build a tree structure from the lines
+function buildTree(lines: string[]): TreeNode {
+    const root = new TreeNode(null, -1);  // Root node with no content and invalid level
+    const stack: TreeNode[] = [root];     // Stack to track parent nodes
+
+    lines.forEach(line => {
+        const level = getLevel(line);
+        const node = new TreeNode(line, level);
+
+        // Find the correct parent node (pop stack until we find a valid parent)
+        while (stack[stack.length - 1].level >= level) {
+            stack.pop();
+        }
+
+        // Add the new node as a child of the current top node
+        stack[stack.length - 1].children.push(node);
+
+        // Push the new node onto the stack for possible children
+        stack.push(node);
+    });
+
+    return root;
+}
+
+// Function to flatten the tree back into an array of lines
+function flattenTree(node: TreeNode): string[] {
+    let lines: string[] = [];
+
+    // Add the current node's line (skip the root node which has no line)
+    if (node.line !== null) {
+        lines.push(node.line);
+    }
+
+    // Recursively flatten the children and add them to the result
+    node.children.forEach(child => {
+        lines = lines.concat(flattenTree(child));
+    });
+
+    return lines;
 }
