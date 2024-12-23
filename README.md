@@ -6,19 +6,19 @@
 
 - **Sort Lines by Width**: Arrange lines based on their visual length.
 
-<img src=".\assets\sorted.png" alt="Sorted Lines" width="auto" height="150px" />
+<img src=".\assets\sorted.png" alt="Sorted Lines" style="width: 50%; height: auto;" loading="lazy" />
 
 - **Shuffle Lines Randomly**: Randomly arrange the selected lines.
 
-<img src=".\assets\shuffled.png" alt="Sorted Lines" width="auto" height="150px" />
+<img src=".\assets\shuffled.png" alt="Sorted Lines" style="width: 50%; height: auto;" loading="lazy" />
 
 - **Sort Lines Lexically**: Arrange lines based on their alphanumerical order.
 
-<img src=".\assets\lexisrted.png" alt="Lexisorted Lines" width="auto" height="150px" />
+<img src=".\assets\lexisrted.png" alt="Lexisorted Lines" style="width: 50%; height: auto;" loading="lazy" />
 
 - **Reverse Selected Lines**: Reverse the order of the selected lines.
 
-<img src=".\assets\reversed.png" alt="Reversed Lines" width="auto" height="150px" />
+<img src=".\assets\reversed.png" alt="Reversed Lines" style="width: 50%; height: auto;" loading="lazy" />
 
 ## Installation
 
@@ -37,25 +37,25 @@
 
 1. Open a note and select the lines you want to arrange.
 
-   <img src=".\assets\select.png" alt="Select Lines Usage" width="auto" height="150px" />
+   <img src=".\assets\select.png" alt="Select Lines Usage" style="width: 50%; height: auto;" loading="lazy" />
 
 
 2. Use the command palette (`Ctrl/Cmd + P`) and type:
    - `Sort lines` to arrange lines based on their apparent width.
 
-   <img src=".\assets\sort.png" alt="Sort Lines Usage" width="auto" height="150px" />
+   <img src=".\assets\sort.png" alt="Sort Lines Usage" style="width: 50%; height: auto;" loading="lazy" />
 
    - `Shuffle lines` to randomize the order of the selected lines.
 
-   <img src=".\assets\shuffle.png" alt="Shuffle Lines Usage" width="auto" height="150px" />
+   <img src=".\assets\shuffle.png" alt="Shuffle Lines Usage" style="width: 50%; height: auto;" loading="lazy" />
 
    - `Lexisort lines` to arrange lines based on their alphanumerical order.
 
-   <img src=".\assets\lexisrt.png" alt="Lexisort Lines Usage" width="auto" height="150px" />
+   <img src=".\assets\lexisrt.png" alt="Lexisort Lines Usage" style="width: 50%; height: auto;" loading="lazy" />
 
    - `Reverse lines` to reverse the order of the selected lines.
 
-   <img src=".\assets\reverse.png" alt="Reverse Lines Usage" width="auto" height="150px" />
+   <img src=".\assets\reverse.png" alt="Reverse Lines Usage" style="width: 50%; height: auto;" loading="lazy" />
 
 ## Contributing
 
