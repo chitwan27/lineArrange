@@ -27,13 +27,13 @@ Line Arrange is an Obsidian plugin that allows users to rearrange lines or block
 ### Block-Based Operations
 
 - **Sort Blocks by Visual Width**: Arrange selected blocks hierarchically based on their visual length.
-  <img src=".\assets\sorted_blocks.jpg" alt="Sorted Blocks" style="width: 50%; height: auto;" loading="lazy" />
+  <img src=".\assets\sorted_blocks.jpg" alt="Sorted Blocks" style="width: 60%; height: auto;" loading="lazy" />
 - **Sort Blocks Lexically**: Arrange selected blocks hierarchically in alphanumerical order.
-  <img src=".\assets\lexisrted_blocks.jpg" alt="Lexisorted Blocks" style="width: 50%; height: auto;" loading="lazy" />
+  <img src=".\assets\lexisrted_blocks.jpg" alt="Lexisorted Blocks" style="width: 60%; height: auto;" loading="lazy" />
 - **Shuffle Blocks**: Randomly reorder selected blocks, but maintain hierarchy.
-  <img src=".\assets\shuffled_blocks.jpg" alt="Shuffled Blocks" style="width: 50%; height: auto;" loading="lazy" />
+  <img src=".\assets\shuffled_blocks.jpg" alt="Shuffled Blocks" style="width: 60%; height: auto;" loading="lazy" />
 - **Reverse Blocks**: Flip the order of selected text blocks, but maintain hierarchy.
-  <img src=".\assets\reversed_blocks.jpg" alt="Reversed Blocks" style="width: 50%; height: auto;" loading="lazy" />
+  <img src=".\assets\reversed_blocks.jpg" alt="Reversed Blocks" style="width: 60%; height: auto;" loading="lazy" />
 
 ## How Block Sorting Works
 
