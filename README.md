@@ -42,6 +42,7 @@ Line Arrange is an Obsidian plugin that allows users to rearrange lines or block
 
   <img src=".\assets\reversed_blocks.jpg" alt="Reversed Blocks" style="width: 50%; height: auto;" loading="lazy" />
 
+---
 
 ### How Block Sorting Works
 
@@ -56,6 +57,8 @@ A **block** is a group of lines separated by blank lines, such as paragraphs, li
 - Reversing flips the order of blocks while keeping child items grouped.
 
 Limitations: The block commands may not work as expected with tables, code blocks, or complex nested formatting.
+
+---
 
 ## Installation
 
@@ -86,7 +89,7 @@ Limitations: The block commands may not work as expected with tables, code block
 
    <img src=".\assets\shuffle_blocks.jpg" alt="Shuffle Lines Usage" style="width: 50%; height: auto;" loading="lazy" />
 
-### List of Commands
+## List of Commands
 
 - **Lexisort lines**
   - Action: Lexically sorts the lines in the selected text.
