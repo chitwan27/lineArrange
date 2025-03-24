@@ -76,7 +76,7 @@ A **block** is a group of lines separated by blank lines, such as paragraphs, li
 
    - `Shuffle blocks` to randomize the order of the selected block of text.
 
-   <img src=".\assets\shuffle_blocks.jpg" alt="Shuffle Lines Usage" style="width: 50%; height: auto;" loading="lazy" />
+   <img src=".\assets\shuffle_blocks.jpg" alt="Shuffle Lines Usage" style="width: 60%; height: auto;" loading="lazy" />
 
 ## List of Commands
 

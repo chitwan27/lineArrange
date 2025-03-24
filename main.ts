@@ -1,5 +1,6 @@
 import { Editor, Plugin } from 'obsidian';
 
+//Hopefully it works alright!
 export default class lineArrange extends Plugin {
     // Method called when the plugin is loaded 
     async onload() {
