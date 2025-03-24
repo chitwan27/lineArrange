@@ -1,7 +1,7 @@
 import { Editor, Plugin } from 'obsidian';
 
 export default class lineArrange extends Plugin {
-    // Method called when the plugin is loaded
+    // Method called when the plugin is loaded 
     async onload() {
 
         // Add a command to lexically sort lines in the editor
