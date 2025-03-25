@@ -49,19 +49,6 @@ A **block** is a group of lines separated by blank lines, such as paragraphs, li
 
 **Limitations**: The block commands may not work as expected with tables, code blocks, or complex nested formatting.
 
-## Installation
-
-1. **From within Obsidian**:
-   - Open Settings.
-   - Navigate to the Community plugins section.
-   - Search for "Line Arrange".
-   - Click "Install" and then "Enable".
-
-2. **Manual Installation**:
-   - Download the latest release from the [GitHub releases page](https://github.com/chitwan27/lineArrange/releases).
-   - Extract the contents to your Obsidian plugins folder: `YourVault/.obsidian/plugins/lineArrange`.
-   - Enable the plugin in the Obsidian settings.
-
 ## Usage
 
 1. Open a note and select the lines you want to arrange.
@@ -103,6 +90,19 @@ A **block** is a group of lines separated by blank lines, such as paragraphs, li
 
 - **Shuffle blocks**
   - Action: Shuffles the blocks in the selected text.
+
+## Installation
+
+1. **From within Obsidian**:
+   - Open Settings.
+   - Navigate to the Community plugins section.
+   - Search for "Line Arrange".
+   - Click "Install" and then "Enable".
+
+2. **Manual Installation**:
+   - Download the latest release from the [GitHub releases page](https://github.com/chitwan27/lineArrange/releases).
+   - Extract the contents to your Obsidian plugins folder: `YourVault/.obsidian/plugins/lineArrange`.
+   - Enable the plugin in the Obsidian settings.
 
 ## Contributing
 
