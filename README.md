@@ -55,7 +55,7 @@ A **block** is a group of lines separated by blank lines, such as paragraphs, li
 
    <img src=".\assets\select.png" alt="Select Lines Usage" style="width: 50%; height: auto;" loading="lazy" />
 
-2. Use the command palette (`Ctrl/Cmd + P`) and type:
+2. Use the command palette (`Ctrl/Cmd + P`) and type command:
 
    - `Sort lines` to arrange lines based on their apparent width.
 
