@@ -47,7 +47,7 @@ A **block** is a group of lines separated by blank lines, such as paragraphs, li
 
 - Reversing flips the order of blocks while keeping child items grouped.
 
-**Limitations**: The block commands may not work as expected with tables, code blocks, or complex nested formatting.
+**Limitations**: The block commands may not work as expected with horizantal rules, tables, code blocks, or complex nested formatting.
 
 ## Usage
 
