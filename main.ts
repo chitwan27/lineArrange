@@ -4,7 +4,7 @@ import { Editor, Plugin } from 'obsidian';
 export default class lineArrange extends Plugin {
     // Method called when the plugin is loaded 
     async onload() {
- 
+
         // Add a command to lexically sort lines in the editor
         this.addCommand({
             id: 'lexisort-lines',
@@ -82,6 +82,46 @@ export default class lineArrange extends Plugin {
             editorCallback: (editor: Editor) => {
                 const selection = editor.getSelection(); // Get the selected text
                 editor.replaceSelection(shuffleBlocks(selection)); // Replace selection with shuffled lines
+            },
+        });
+
+        /** Lexical sort headings ---------------------------------------- */
+        this.addCommand({
+            id: "lexisort-headings",
+            name: "Lexisort headings",
+            editorCallback: (editor: Editor) => {
+                const sel = editor.getSelection();
+                editor.replaceSelection(lexisortHeadings(sel));
+            },
+        });
+
+        /** Visual‑width sort headings ----------------------------------- */
+        this.addCommand({
+            id: "sort-headings",
+            name: "Sort headings",
+            editorCallback: (editor: Editor) => {
+                const sel = editor.getSelection();
+                editor.replaceSelection(sortHeadings(sel));
+            },
+        });
+
+        /** Shuffle headings --------------------------------------------- */
+        this.addCommand({
+            id: "shuffle-headings",
+            name: "Shuffle headings",
+            editorCallback: (editor: Editor) => {
+                const sel = editor.getSelection();
+                editor.replaceSelection(shuffleHeadings(sel));
+            },
+        });
+
+        /** Reverse headings (preserve original order but flipped) -------- */
+        this.addCommand({
+            id: "reverse-headings",
+            name: "Reverse headings",
+            editorCallback: (editor: Editor) => {
+                const sel = editor.getSelection();
+                editor.replaceSelection(reverseHeadings(sel));
             },
         });
     }
@@ -274,7 +314,7 @@ function getLevel(line: string): number {
     }
     // Default case (plain text or code or list_item)
     else {
-        level = 10 + indentation; 
+        level = 10 + indentation;
         return level;
     }
 }
@@ -323,4 +363,74 @@ function flattenTree(node: TreeNode): string[] {
     });
 
     return lines;
+}
+
+
+// Latest Stuff
+interface Block { heading: string; lines: string[] }
+/** Shared comparators */
+const alphaCmp = (a: string, b: string) => a.localeCompare(b);
+const widthCmp = (a: string, b: string) => realLineWidth(a) - realLineWidth(b);
+const randomCmp = () => Math.random() - 0.5;
+
+/** Core splitter + sorter: keeps each top‑level heading block intact */
+function transformHeadings(
+    orgText: string,
+    orderer: (blocks: Block[]) => Block[]
+): string {
+    const lines = orgText.split("\n");
+
+    /* 1· outer‑most level (# count) */
+    let minLevel = Infinity;
+    for (const l of lines) {
+        const m = l.match(/^(\s*#+)\s/);
+        if (m) minLevel = Math.min(minLevel, m[1].trim().length);
+    }
+    if (minLevel === Infinity) return orgText; // nothing to sort
+
+    /* 2· slice into blocks */
+
+    const blocks: Block[] = [];
+    let cur: Block | null = null;
+
+    for (const line of lines) {
+        const m = line.match(/^(\s*#+)\s/);
+        const lvl = m ? m[1].trim().length : null;
+
+        if (lvl === minLevel) {          // new sibling heading
+            if (cur) blocks.push(cur);
+            cur = { heading: line, lines: [line] };
+        } else {
+            if (!cur) cur = { heading: "", lines: [] }; // pre‑heading stuff
+            cur.lines.push(line);
+        }
+    }
+    if (cur) blocks.push(cur);
+
+    /* 3· order the blocks */
+    const ordered = orderer(blocks);
+
+    /* 4· flatten */
+    return ordered.map(b => b.lines.join("\n")).join("\n");
+}
+
+/* --- Public helpers ------------------------------------------------ */
+
+function lexisortHeadings(t: string): string {
+    return transformHeadings(t, blocks =>
+        blocks.sort((a, b) => alphaCmp(a.heading, b.heading)));
+}
+
+function sortHeadings(t: string): string {
+    return transformHeadings(t, blocks =>
+        blocks.sort((a, b) => widthCmp(a.heading, b.heading)));
+}
+
+function shuffleHeadings(t: string): string {
+    return transformHeadings(t, blocks =>
+        blocks.sort(() => randomCmp()));
+}
+
+function reverseHeadings(t: string): string {
+    return transformHeadings(t, blocks => blocks.reverse());
 }

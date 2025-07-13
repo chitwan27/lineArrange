@@ -35,6 +35,20 @@ Line Arrange is an Obsidian plugin that allows users to rearrange lines or block
 - **Reverse Blocks**: Flip the order of selected text blocks, but maintain hierarchy.
   <img src=".\assets\reversed_blocks.jpg" alt="Reversed Blocks" style="width: 60%; height: auto;" loading="lazy" />
 
+  
+### Heading-Based Operations
+
+- **Sort Headings by Width**: Arrange top-level headings (and their content) by the visual width of the heading line.
+
+- **Sort Headings Lexically**: Alphabetically sort the top-level headings and keep subcontent intact.
+
+- **Shuffle Headings**: Randomly rearrange the top-level headings and their content.
+
+- **Reverse Headings**: Flip the order of top-level headings without disturbing hierarchy.
+
+> Only the shallowest-level headings in the selection are reordered. All subheadings and content below each are preserved.
+
+
 ## How Block Sorting Works
 
 A **block** is a group of lines separated by blank lines, such as paragraphs, lists, or sections under a heading. When sorting a text block, its hierarchical structure is maintained:
@@ -75,6 +89,18 @@ A **block** is a group of lines separated by blank lines, such as paragraphs, li
 - **Shuffle lines**
   - Action: Shuffles the lines in the selected text.
 
+- **Lexisort headings**
+  - Action: Lexically sorts the top-level headings in the selected text.
+
+- **Reverse headings**
+  - Action: Reverses the order of top-level headings in the selected text.
+
+- **Sort headings**
+  - Action: Sorts top-level headings in the selected text based on their visual width.
+
+- **Shuffle headings**
+  - Action: Shuffles the top-level headings in the selected text.
+
 - **Lexisort blocks**
   - Action: Lexically sorts the blocks in the selected text.
 
@@ -99,16 +125,3 @@ A **block** is a group of lines separated by blank lines, such as paragraphs, li
    - Download the latest release from the [GitHub releases page](https://github.com/chitwan27/lineArrange/releases).
    - Extract the contents to your Obsidian plugins folder: `YourVault/.obsidian/plugins/lineArrange`.
    - Enable the plugin in the Obsidian settings.
-
-## Contributing
-
-- Open an issue for bugs or feature requests on the [GitHub repository](https://github.com/chitwan27/lineArrange/issues).
-- Fork the repository, make your changes, and submit a pull request.
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/chitwan27/lineArrange/blob/master/LICENSE) file for details.
-
-## Contact
-
-For any questions or suggestions, reach out via [GitHub Issues](https://github.com/chitwan27/lineArrange/issues).
