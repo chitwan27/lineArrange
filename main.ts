@@ -1,38 +1,33 @@
-import { App, Editor, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Editor, Plugin, PluginSettingTab, Setting, MarkdownRenderer, Component, EventRef } from 'obsidian';
+
+/**
+ * @file This file contains the complete source code for the "Line Arrange" Obsidian plugin.
+ * The plugin provides various commands to sort, shuffle, and reverse lines, blocks (indented lists),
+ * and sections under headings within the Obsidian editor.
+ */
 
 /** -------------------- Settings -------------------- */
 
 /**
- * Configuration interface for the line arrangement plugin.
- * Controls sorting behavior, localization, and visual width calculations.
+ * @interface MyPluginSettings
+ * Defines the shape of the settings object for the plugin.
  */
 interface MyPluginSettings {
-    /** 
-     * Locale code for text sorting (e.g., "en", "fr", "de").
-     * Empty string defaults to Obsidian's UI language via navigator.language
-     */
-    myLocale: string;
-
-    /** Whether sorting operations should distinguish between upper and lowercase letters */
-    caseSensitive: boolean;
-
-    /** Source for font metrics when calculating visual line width */
-    fontSource: "theme" | "editor" | "custom";
-
-    /** Custom CSS font specification string (e.g., "16px Fira Code") when fontSource is "custom" */
-    customFont: string;
-
-    /** 
-     * Controls blank line handling during line-wise operations:
-     * - true: blank lines stay in their original positions
-     * - false: blank lines are moved to the top of sorted groups
-     */
-    preserveBlankLines: boolean;
+    myLocale: string;          // BCP-47 locale string for sorting, e.g., "en-US", "de-DE".
+    caseSensitive: boolean;    // Determines if lexisort operations respect character case.
+    fontSource: "theme" | "custom"; // Source for font properties used in width calculations.
+    customFont: string;        // The custom CSS font string if fontSource is "custom".
+    preserveBlankLines: boolean; // If true, blank lines are not moved during sorting.
 }
 
+/**
+ * @const DEFAULT_SETTINGS
+ * The default values for the plugin settings. These are used when the plugin is
+ * first loaded or when saved settings are incomplete.
+ */
 const DEFAULT_SETTINGS: MyPluginSettings = {
-    myLocale: "",               // Uses navigator.language when empty
-    caseSensitive: false,
+    myLocale: "", // An empty string uses the system default locale.
+    caseSensitive: true,
     fontSource: "theme",
     customFont: "",
     preserveBlankLines: false
@@ -41,270 +36,312 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 /** -------------------- Plugin -------------------- */
 
 /**
- * Main plugin class that provides text sorting and arrangement commands for Obsidian.
- * Supports sorting lines, blocks (indented/heading hierarchies), and top-level headings
- * with multiple sorting methods: lexical, visual width, shuffle, and reverse.
+ * @class lineArrange
+ * The main class for the plugin, extending Obsidian's Plugin class.
+ * It handles the plugin lifecycle, command registration, settings management,
+ * and the core logic for text manipulation.
  */
 export default class lineArrange extends Plugin {
     settings: MyPluginSettings;
 
-    /** 
-     * Cache for expensive canvas text width measurements.
-     * Key format: `${fontSpec}||${lineText}` -> measured pixel width
+    /**
+     * @property {Map<string, { renderedText: string, width: number }>} renderCache
+     * A cache to store the results of expensive rendering and width calculation operations.
+     * The key is a combination of the font specification and the source line (`${fontSpec}||${src}`),
+     * ensuring that results are unique to both the text and the font used to measure it.
      */
-    private widthCache = new Map<string, number>();
+    private renderCache = new Map<string, { renderedText: string, width: number }>();
 
-    /** Tracks the last font specification used to detect when cache should be cleared */
-    private lastFontSpec = "";
+    private cssEventRef: EventRef | null = null;
 
     /**
-     * Plugin initialization - loads settings and registers all commands
+     * @property headingScales
+     * A cache of heading scale factors (relative to normal text size).
+     * Keys: heading level 1–6. Values: number scale factor.
+     */
+    private headingScales: Record<number, number> | null = null;
+
+    /**
+     * The `onload` method is called when the plugin is enabled.
+     * It loads settings and registers all commands and the settings tab.
      */
     async onload() {
         await this.loadSettings();
 
-        // Line-level operations: work on individual lines within selection
-        this.addCommand({
-            id: 'lexisort-lines',
-            name: 'Lexisort lines',
-            editorCallback: (editor: Editor) => {
-                editor.replaceSelection(this.lexisortLines(editor.getSelection()));
-            },
-        });
-        this.addCommand({
-            id: 'reverse-lines',
-            name: 'Reverse lines',
-            editorCallback: (editor: Editor) => {
-                editor.replaceSelection(this.reverseLines(editor.getSelection()));
-            },
-        });
-        this.addCommand({
-            id: 'sort-lines',
-            name: 'Sort lines',
-            editorCallback: (editor: Editor) => {
-                editor.replaceSelection(this.sortLines(editor.getSelection()));
-            },
-        });
-        this.addCommand({
-            id: 'shuffle-lines',
-            name: 'Shuffle lines',
-            editorCallback: (editor: Editor) => {
-                editor.replaceSelection(this.shuffleLines(editor.getSelection()));
-            },
+
+        this.cssEventRef = this.app.workspace.on("css-change", () => {
+            this.renderCache.clear();
+            this.headingScales = null;
+            console.log("[LineArrange] CSS change → invalidated caches");
         });
 
-        // Block-level operations: work on hierarchical structures (headings + indented content)
-        this.addCommand({
-            id: 'lexisort-blocks',
-            name: 'Lexisort blocks',
-            editorCallback: (editor: Editor) => {
-                editor.replaceSelection(this.lexiSortBlocks(editor.getSelection()));
-            },
-        });
-        this.addCommand({
-            id: 'reverse-blocks',
-            name: 'Reverse blocks',
-            editorCallback: (editor: Editor) => {
-                editor.replaceSelection(this.reverseBlocks(editor.getSelection()));
-            },
-        });
-        this.addCommand({
-            id: 'sort-blocks',
-            name: 'Sort blocks',
-            editorCallback: (editor: Editor) => {
-                editor.replaceSelection(this.sortBlocks(editor.getSelection()));
-            },
-        });
-        this.addCommand({
-            id: 'shuffle-blocks',
-            name: 'Shuffle blocks',
-            editorCallback: (editor: Editor) => {
-                editor.replaceSelection(this.shuffleBlocks(editor.getSelection()));
-            },
-        });
+        // A helper function to wrap async editor commands, ensuring errors are caught.
+        const runAsync = (fn: (editor: Editor) => Promise<void>) =>
+            (editor: Editor) => { fn(editor).catch(console.error); };
 
-        // Heading-level operations: work only on top-level headings and their complete sections
-        this.addCommand({
-            id: "lexisort-headings",
-            name: "Lexisort headings",
-            editorCallback: (editor: Editor) => {
-                editor.replaceSelection(this.lexisortHeadings(editor.getSelection()));
-            },
-        });
-        this.addCommand({
-            id: "sort-headings",
-            name: "Sort headings",
-            editorCallback: (editor: Editor) => {
-                editor.replaceSelection(this.sortHeadings(editor.getSelection()));
-            },
-        });
-        this.addCommand({
-            id: "shuffle-headings",
-            name: "Shuffle headings",
-            editorCallback: (editor: Editor) => {
-                editor.replaceSelection(this.shuffleHeadings(editor.getSelection()));
-            },
-        });
-        this.addCommand({
-            id: "reverse-headings",
-            name: "Reverse headings",
-            editorCallback: (editor: Editor) => {
-                editor.replaceSelection(this.reverseHeadings(editor.getSelection()));
-            },
-        });
+        /** ------------------ Register Commands ------------------ */
 
-        // Register settings configuration tab
+        // Line-level commands operate on a simple list of lines.
+        this.addCommand({ id: 'lexisort-lines', name: 'Lexisort lines', editorCallback: runAsync(async (ed) => ed.replaceSelection(await this.lexisortLines(ed.getSelection()))) });
+        this.addCommand({ id: 'reverse-lines', name: 'Reverse lines', editorCallback: runAsync(async (ed) => ed.replaceSelection(await this.reverseLines(ed.getSelection()))) });
+        this.addCommand({ id: 'sort-lines', name: 'Sort lines (by visual width)', editorCallback: runAsync(async (ed) => ed.replaceSelection(await this.sortLines(ed.getSelection()))) });
+        this.addCommand({ id: 'shuffle-lines', name: 'Shuffle lines', editorCallback: runAsync(async (ed) => ed.replaceSelection(await this.shuffleLines(ed.getSelection()))) });
+
+        // Block-level commands operate on hierarchical lists (indented text).
+        this.addCommand({ id: 'lexisort-blocks', name: 'Lexisort blocks', editorCallback: runAsync(async (ed) => ed.replaceSelection(await this.lexiSortBlocks(ed.getSelection()))) });
+        this.addCommand({ id: 'reverse-blocks', name: 'Reverse blocks', editorCallback: runAsync(async (ed) => ed.replaceSelection(await this.reverseBlocks(ed.getSelection()))) });
+        this.addCommand({ id: 'sort-blocks', name: 'Sort blocks (by visual width)', editorCallback: runAsync(async (ed) => ed.replaceSelection(await this.sortBlocks(ed.getSelection()))) });
+        this.addCommand({ id: 'shuffle-blocks', name: 'Shuffle blocks', editorCallback: runAsync(async (ed) => ed.replaceSelection(await this.shuffleBlocks(ed.getSelection()))) });
+
+        // Heading-level commands operate on sections separated by Markdown headings.
+        this.addCommand({ id: "lexisort-headings", name: "Lexisort headings", editorCallback: runAsync(async (ed) => ed.replaceSelection(await this.lexisortHeadings(ed.getSelection()))) });
+        this.addCommand({ id: "sort-headings", name: "Sort headings (by visual width)", editorCallback: runAsync(async (ed) => ed.replaceSelection(await this.sortHeadings(ed.getSelection()))) });
+        this.addCommand({ id: "shuffle-headings", name: "Shuffle headings", editorCallback: runAsync(async (ed) => ed.replaceSelection(await this.shuffleHeadings(ed.getSelection()))) });
+        this.addCommand({ id: "reverse-headings", name: "Reverse headings", editorCallback: runAsync(async (ed) => ed.replaceSelection(await this.reverseHeadings(ed.getSelection()))) });
+
+        // Add the settings tab to the Obsidian settings panel.
         this.addSettingTab(new MySettingsTab(this.app, this));
     }
 
-    onunload() { }
+    /** The `onunload` method is called when the plugin is disabled. */
+    onunload() {
+        if (this.cssEventRef) {
+            this.app.workspace.offref(this.cssEventRef);
+            this.cssEventRef = null;
+        }
+    }
 
-    /**
-     * Loads plugin settings from Obsidian's data storage, merging with defaults
-     */
+    /** Loads plugin settings from Obsidian's storage. */
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     }
 
-    /**
-     * Saves current settings and clears width measurement cache
-     * (cache clearing ensures font changes take effect immediately)
-     */
+    /** Saves the current plugin settings to Obsidian's storage. */
     async saveSettings() {
-        this.widthCache.clear();
-        this.lastFontSpec = "";
         await this.saveData(this.settings);
     }
 
-    /** 
-     * Determines the locale code to use for text comparison operations.
-     * Priority: plugin setting -> navigator.language -> "en" fallback
+    /** Return true when the value is empty (meaning "use system default")
+     *  or when the BCP-47 tag is syntactically valid and supported by the engine.
      */
-    getLocale(): string {
-        if (this.settings.myLocale && this.settings.myLocale.trim() !== "") {
-            return this.settings.myLocale;
+    isValidLocale(tag: string | null | undefined): boolean {
+        const t = (tag || "").trim();
+        if (t === "") return true; // empty = system default, treat as valid
+
+        // Defensive: ensure Intl is available
+        if (typeof Intl === "undefined" || !Intl.Collator || !Intl.getCanonicalLocales) {
+            // If Intl is missing (very unlikely in Electron/Obsidian), be permissive:
+            return false;
         }
-        return navigator.language || "en";
+
+        try {
+            // Canonicalize (may throw RangeError for syntactically invalid tags)
+            const canonical = Intl.getCanonicalLocales(t)[0];
+            // Ask the runtime which of these locales are actually supported for collation.
+            const supported = Intl.Collator.supportedLocalesOf([canonical], { localeMatcher: "lookup" });
+            return supported.length > 0;
+        } catch (e) {
+            // Any exception -> invalid / not supported
+            return false;
+        }
     }
 
-    /** 
-     * Constructs a CSS font specification string for canvas text measurement.
-     * Returns format like "16px Fira Code" based on current fontSource setting.
-     * Attempts to read from CSS custom properties with fallbacks.
+
+    /** Gets the locale for string comparison, falling back to the browser/system language. */
+    getLocale(): string {
+        const loc = this.settings.myLocale?.trim()
+        return this.isValidLocale(loc) ? loc : (navigator.language || "en");
+    }
+
+    /**
+     * Constructs the CSS font string based on user settings. This is crucial for
+     * accurately measuring the visual width of text for sorting.
+     * @returns {string} A CSS font string (e.g., "16px sans-serif").
      */
     getFontSpec(): string {
         const pick = this.settings.fontSource || "theme";
-
-        // Helper function to safely read CSS custom properties
         const css = (name: string, fallback: string) => {
             try {
+                // Read CSS variable from the document body.
                 const v = getComputedStyle(document.body).getPropertyValue(name)?.trim();
                 return (v && v !== "") ? v : fallback;
-            } catch {
-                return fallback;
-            }
+            } catch { return fallback; }
         };
 
         if (pick === "theme") {
-            // Use Obsidian theme's general text font settings
             const size = css("--font-text-size", "16px");
             const font = css("--font-text", "sans-serif");
             return `${size} ${font}`;
-        } else if (pick === "editor") {
-            // Use editor-specific font settings, falling back to theme settings
-            const size = css("--font-editor-font-size", css("--font-text-size", "16px"));
-            const font = css("--font-editor-font-family", css("--font-text", "monospace"));
-            return `${size} ${font}`;
-        } else { // custom
-            // Use user-provided custom font specification
-            return (this.settings.customFont && this.settings.customFont.trim() !== "")
-                ? this.settings.customFont
-                : "16px sans-serif";
+        } else { // "custom"
+            const customFont = this.settings.customFont?.trim() || "16px sans-serif";
+            return customFont;
         }
     }
 
-    /* ------------------ LINE PROCESSING ------------------ */
-
-    /** 
-     * Core line processing engine that handles blank line preservation logic.
-     * Applies the provided ordering function to contiguous groups of non-blank lines.
-     * 
-     * @param orgText - Original text to process
-     * @param orderer - Function that reorders an array of non-blank lines
-     * @returns Processed text with ordering applied according to preserveBlankLines setting
+    /**
+     * Initializes (if needed) and returns the scale factor for a given heading level.
+     * It measures <h1> through <h6> once using the browser’s computed styles,
+     * The cache is invalidated whenever the font specification changes.
+     *
+     * @param level - Heading level (1–6).
+     * @returns Scale factor relative to normal text (e.g. 1.6 means 60% bigger).
      */
-    private processLines(orgText: string, orderer: (lines: string[]) => string[]): string {
-        const lines = orgText.split("\n");
+    private getHeadingScale(level: number): number {
+        // Rebuild cache if missing
+        if (!this.headingScales) {
+            this.headingScales = {};
+            const baseSizePx =
+                parseFloat(getComputedStyle(document.body).fontSize) || 16;
 
-        if (!this.settings.preserveBlankLines) {
-            // Legacy behavior: separate blank and non-blank lines, move blanks to top
-            const blanks = lines.filter(l => l.trim() === "");
-            const nonBlanks = lines.filter(l => l.trim() !== "");
-            return [...blanks, ...orderer(nonBlanks)].join("\n").trimEnd();
+            for (let lvl = 1; lvl <= 6; lvl++) {
+                const tmp = document.createElement(`h${lvl}`);
+                tmp.style.visibility = "hidden";
+                tmp.style.position = "absolute";
+                tmp.textContent = "X";
+                document.body.appendChild(tmp);
+
+                const headingSizePx = parseFloat(getComputedStyle(tmp).fontSize);
+                document.body.removeChild(tmp);
+
+                let factor = 1;
+                if (!isNaN(headingSizePx) && baseSizePx > 0) {
+                    factor = headingSizePx / baseSizePx;
+                }
+                this.headingScales[lvl] = factor;
+            }
         }
 
-        // Modern behavior: preserve blank line positions, only sort contiguous non-blank groups
-        const result: string[] = [];
-        let buffer: string[] = []; // Accumulates contiguous non-blank lines
+        return this.headingScales[level] ?? 1;
+    }
 
-        // Flushes current buffer of non-blank lines through the orderer
-        const flush = () => {
+    /** ------------------ Unified Render + Width Cache ------------------ */
+
+    /**
+     * A unified function to get the rendered plain text and visual width of a line of Markdown.
+     * It uses a cache to avoid re-calculating for the same line and font.
+     * @param {string} src - The source Markdown line.
+     * @returns {Promise<{ renderedText: string, width: number }>} An object containing the plain text and its calculated width.
+     */
+    private async getRenderCacheEntry(src: string): Promise<{ renderedText: string, width: number }> {
+        const fontSpec = this.getFontSpec().trim();
+
+        const key = `${fontSpec}||${src}`;
+        const cached = this.renderCache.get(key);
+        if (cached) return cached;
+
+        // Step 1: Render Markdown to plain text to handle links, emphasis, etc.
+        const tmp = document.createElement("div");
+        const comp = new Component();
+        let rendered = "";
+        try {
+            // Using a component ensures that any Obsidian-specific rendering handlers are properly managed and cleaned up.
+            await MarkdownRenderer.render(this.app, src, tmp, "", comp);
+            rendered = tmp.innerText.trim();
+        } finally {
+            comp.unload(); // Important for preventing memory leaks.
+        }
+
+        // Step 2: Measure the width of the rendered text using a canvas.
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        let width = rendered.length * 10; // Fallback width if canvas context isn't available.
+        if (ctx) {
+            ctx.font = fontSpec;
+            width = ctx.measureText(rendered).width;
+
+            // Step 3: Adjust width if the source is a Markdown heading
+            const match = src.match(/^(#{1,6})\s+/);
+            if (match) {
+                const level = match[1].length;
+                const scale = this.getHeadingScale(level);
+                width *= scale;
+            }
+
+            // Precision scaling
+            width = Math.round(width * 10000);
+        }
+
+        const entry = { renderedText: rendered, width };
+        this.renderCache.set(key, entry);
+        return entry;
+    }
+
+    /** ------------------ Line Helpers ------------------ */
+
+    /**
+     * A generic processor for line-based operations. It handles splitting text into lines
+     * and managing blank lines according to the `preserveBlankLines` setting.
+     * @param {string} orgText - The original text selection.
+     * @param {(lines: string[]) => Promise<string[]>} orderer - An async function that takes an array of lines and returns them in a new order.
+     * @returns {Promise<string>} The re-ordered text.
+     */
+    private async processLines(orgText: string, orderer: (lines: string[]) => Promise<string[]>): Promise<string> {
+        const lines = orgText.split("\n");
+        // If not preserving blanks, separate them, sort the non-blanks, and prepend the blanks.
+        if (!this.settings.preserveBlankLines) {
+            const blanks = lines.filter(l => l.trim() === "");
+            const nonBlanks = lines.filter(l => l.trim() !== "");
+            const ordered = await orderer(nonBlanks);
+            return [...blanks, ...ordered].join("\n").trimEnd();
+        }
+
+        // If preserving blanks, sort contiguous blocks of non-blank lines.
+        const result: string[] = [];
+        let buffer: string[] = [];
+        const flush = async () => {
             if (buffer.length > 0) {
-                result.push(...orderer(buffer));
+                const ordered = await orderer(buffer);
+                result.push(...ordered);
                 buffer = [];
             }
         };
 
         for (const line of lines) {
             if (line.trim() === "") {
-                flush(); // Process any accumulated non-blank lines
-                result.push(line); // Preserve blank line in its original position
+                await flush();      // Process the buffer of lines before this blank line.
+                result.push(line);  // Add the blank line itself.
             } else {
-                buffer.push(line); // Accumulate non-blank line for sorting
+                buffer.push(line);
             }
         }
-        flush(); // Handle any remaining buffered lines
-
+        await flush(); // Process any remaining lines at the end of the text.
         return result.join("\n");
     }
 
-    /** 
-     * Sorts lines alphabetically using locale-aware comparison.
-     * Respects case sensitivity setting and current locale.
-     */
-    lexisortLines(orgText: string): string {
-        const locale = this.getLocale();
-        const options = { sensitivity: this.settings.caseSensitive ? "case" : "base" } as const;
+    // --- Line Command Implementations ---
 
-        return this.processLines(orgText, lines =>
-            [...lines].sort((a, b) => a.localeCompare(b, locale, options))
-        );
+    async lexisortLines(orgText: string): Promise<string> {
+        return this.processLines(orgText, async (lines) => {
+            const entries = await Promise.all(lines.map(l => this.getRenderCacheEntry(l)));
+            const items = lines.map((line, i) => ({ line, rendered: entries[i].renderedText, i }));
+            // A stable sort: sort by rendered text, using original index `i` as a tie-breaker.
+            items.sort((a, b) => {
+                const cmp = a.rendered.localeCompare(b.rendered, this.getLocale(), { sensitivity: this.settings.caseSensitive ? "variant" : "base" });
+                return cmp !== 0 ? cmp : a.i - b.i;
+            });
+            return items.map(it => it.line);
+        });
     }
 
-    /** Reverses the order of lines within contiguous groups */
-    reverseLines(orgText: string): string {
-        return this.processLines(orgText, lines => [...lines].reverse());
+    async sortLines(orgText: string): Promise<string> {
+        return this.processLines(orgText, async (lines) => {
+            const entries = await Promise.all(lines.map(l => this.getRenderCacheEntry(l)));
+            const items = lines.map((line, i) => ({ line, width: entries[i].width, i }));
+            // A stable sort: sort by visual width, using original index `i` as a tie-breaker.
+            items.sort((a, b) => (a.width - b.width) || (a.i - b.i));
+            return items.map(it => it.line);
+        });
     }
 
-    /** 
-     * Sorts lines by their visual rendering width using canvas text measurement.
-     * Useful for creating visually aligned layouts.
-     */
-    sortLines(orgText: string): string {
-        return this.processLines(orgText, lines =>
-            [...lines].slice().sort((a, b) => this.realLineWidth(a) - this.realLineWidth(b))
-        );
+    async reverseLines(orgText: string): Promise<string> {
+        return this.processLines(orgText, async (lines) => [...lines].reverse());
     }
 
-    /** Randomly shuffles lines within contiguous groups using Fisher-Yates algorithm */
-    shuffleLines(orgText: string): string {
-        return this.processLines(orgText, lines => this.shuffleArray(lines));
+    async shuffleLines(orgText: string): Promise<string> {
+        return this.processLines(orgText, async (lines) => this.shuffleArray(lines));
     }
 
-    /** 
-     * Fisher–Yates shuffle implementation for unbiased random ordering.
-     * Creates a new array to avoid mutating the input.
-     */
+    /** Implements the Fisher-Yates shuffle algorithm. */
     private shuffleArray<T>(arr: T[]): T[] {
         const out = arr.slice();
         for (let i = out.length - 1; i > 0; i--) {
@@ -314,271 +351,195 @@ export default class lineArrange extends Plugin {
         return out;
     }
 
-    /**
-     * Measures the visual rendering width of a text line using HTML5 Canvas.
-     * Implements caching to avoid expensive re-measurements of identical content.
-     * 
-     * @param line - Text line to measure
-     * @returns Scaled pixel width (multiplied by 10000 for precision in integer comparisons)
-     * @throws Error if canvas 2D context cannot be obtained
-     */
-    realLineWidth(line: string): number {
-        const fontSpec = this.getFontSpec().trim();
+    /** ------------------ Block Helpers (for indented lists) ------------------ */
 
-        // Clear cache if font specification has changed
-        if (fontSpec !== this.lastFontSpec) {
-            this.widthCache.clear();
-            this.lastFontSpec = fontSpec;
-        }
+    // --- Block Command Implementations ---
 
-        // Check cache first to avoid expensive canvas operations
-        const key = `${fontSpec}||${line}`;
-        const cached = this.widthCache.get(key);
-        if (cached !== undefined) return cached;
-
-        // Perform canvas measurement
-        const canvas = document.createElement("canvas");
-        const context = canvas.getContext("2d");
-        if (!context) throw new Error("Failed to get 2D context");
-
-        context.font = fontSpec;
-        const width = Math.round(10000 * context.measureText(line).width);
-        this.widthCache.set(key, width);
-        return width;
-    }
-
-    /* ------------------ BLOCKS & TREE ------------------ */
-
-    /** 
-     * Sorts hierarchical blocks by visual width.
-     * Builds tree structure from indentation/headings, sorts each level, then flattens.
-     */
-    sortBlocks(orgText: string): string {
-        const lines = orgText.split("\n");
-        const tree = this.buildTree(lines);
-        this.sortTreeByWidth(tree);
+    async sortBlocks(orgText: string): Promise<string> {
+        const tree = this.buildTree(orgText.split("\n"));
+        await this.sortTreeByWidth(tree);
         return this.flattenTree(tree).join("\n");
     }
 
-    /** Randomly shuffles hierarchical blocks while preserving structure */
-    shuffleBlocks(orgText: string): string {
-        const lines = orgText.split("\n");
-        const tree = this.buildTree(lines);
-        this.shuffleTree(tree);
+    async lexiSortBlocks(orgText: string): Promise<string> {
+        const tree = this.buildTree(orgText.split("\n"));
+        await this.lexiSortTree(tree);
         return this.flattenTree(tree).join("\n");
     }
 
-    /** Lexically sorts hierarchical blocks while preserving structure */
-    lexiSortBlocks(orgText: string): string {
-        const lines = orgText.split("\n");
-        const tree = this.buildTree(lines);
-        this.lexiSortTree(tree);
+    async reverseBlocks(orgText: string): Promise<string> {
+        const tree = this.buildTree(orgText.split("\n"));
+        await this.reverseTree(tree);
         return this.flattenTree(tree).join("\n");
     }
 
-    /** Reverses hierarchical blocks while preserving structure */
-    reverseBlocks(orgText: string): string {
-        const lines = orgText.split("\n");
-        const tree = this.buildTree(lines);
-        this.reverseTree(tree);
+    async shuffleBlocks(orgText: string): Promise<string> {
+        const tree = this.buildTree(orgText.split("\n"));
+        await this.shuffleTree(tree);
         return this.flattenTree(tree).join("\n");
     }
 
-    /** 
-     * Recursively sorts tree children by visual width with stable tie-breaking.
-     * Uses original index to ensure consistent ordering for equal-width items.
-     */
-    sortTreeByWidth(node: TreeNode): void {
-        node.children = node.children
-            .map((c, i) => ({ c, i, w: this.realLineWidth(c.line || "") }))
-            .sort((a, b) => (a.w - b.w) || (a.i - b.i))
-            .map(x => x.c);
+    // --- Recursive Tree Sorters ---
 
-        node.children.forEach(child => this.sortTreeByWidth(child));
+    async sortTreeByWidth(node: TreeNode): Promise<void> {
+        if (!node.children.length) return;
+        // The same stable sort pattern is applied to the children of the current node.
+        const entries = await Promise.all(node.children.map(c => this.getRenderCacheEntry(c.line || "")));
+        const items = node.children.map((c, i) => ({ c, width: entries[i].width, i }));
+        items.sort((a, b) => (a.width - b.width) || (a.i - b.i));
+        node.children = items.map(it => it.c);
+        // Recurse to sort the children of each child node.
+        for (const child of node.children) await this.sortTreeByWidth(child);
     }
 
-    /** Recursively shuffles tree children at each level */
-    shuffleTree(node: TreeNode): void {
-        node.children = this.shuffleArray(node.children);
-        node.children.forEach(child => this.shuffleTree(child));
+    async lexiSortTree(node: TreeNode): Promise<void> {
+        if (!node.children.length) return;
+        const entries = await Promise.all(node.children.map(c => this.getRenderCacheEntry(c.line || "")));
+        const items = node.children.map((c, i) => ({ c, rendered: entries[i].renderedText, i }));
+        items.sort((a, b) => {
+            const cmp = a.rendered.localeCompare(b.rendered, this.getLocale(), { sensitivity: this.settings.caseSensitive ? "variant" : "base" });
+            return cmp !== 0 ? cmp : a.i - b.i;
+        });
+        node.children = items.map(it => it.c);
+        for (const child of node.children) await this.lexiSortTree(child);
     }
 
-    /** 
-     * Recursively sorts tree children lexically with stable tie-breaking.
-     * Uses original index to ensure consistent ordering for identical text.
-     */
-    lexiSortTree(node: TreeNode): void {
-        const locale = this.getLocale();
-        const options = { sensitivity: this.settings.caseSensitive ? "case" : "base" } as const;
-
-        node.children = node.children
-            .map((c, i) => ({ c, i, key: (c.line || "") }))
-            .sort((a, b) => {
-                const cmp = a.key.localeCompare(b.key, locale, options);
-                return cmp !== 0 ? cmp : (a.i - b.i);
-            })
-            .map(x => x.c);
-
-        node.children.forEach(child => this.lexiSortTree(child));
-    }
-
-    /** Recursively reverses tree children at each level */
-    reverseTree(node: TreeNode): void {
+    async reverseTree(node: TreeNode): Promise<void> {
         node.children.reverse();
-        node.children.forEach(child => this.reverseTree(child));
+        for (const child of node.children) await this.reverseTree(child);
     }
 
-    /** ------------------ TREE BUILD / FLATTEN ------------------ */
+    async shuffleTree(node: TreeNode): Promise<void> {
+        node.children = this.shuffleArray(node.children);
+        for (const child of node.children) await this.shuffleTree(child);
+    }
+
+    /** ------------------ Tree Utils ------------------ */
 
     /**
-     * Determines hierarchical level of a line based on markdown headings and indentation.
-     * Heading levels (1-6) take precedence, with indented content treated as deeper (10+).
-     * 
-     * @param line - Line to analyze
-     * @returns Numeric level where lower numbers = higher in hierarchy
+     * Determines the hierarchical level of a line. Markdown Headings (#) have
+     * levels 1-6. Indented lines are given higher levels (10+) to ensure they are
+     * always treated as children of any heading.
      */
     getLevel(line: string): number {
-        // Check for markdown heading (# ## ### etc.)
-        const m = line.match(/^\s*(#+)\s/);
-        if (m) return m[1].length;
-
-        // Non-heading lines use indentation level offset by 10 (deeper than any heading)
-        const indentation = this.getIndentation(line);
-        return 10 + indentation;
+        const m = line.match(/^\s*(#+)\s/); // Matches heading syntax like "## "
+        return m ? m[1].length : 10 + this.getIndentation(line);
     }
 
-    /** Counts leading whitespace characters to determine indentation depth */
+    /** Calculates the number of leading whitespace characters. */
     getIndentation(line: string): number {
         return line.match(/^\s*/)?.[0].length ?? 0;
     }
 
     /**
-     * Builds a hierarchical tree structure from flat list of lines.
-     * Uses a stack-based algorithm to handle arbitrary nesting levels.
-     * 
-     * @param lines - Array of text lines to structure
-     * @returns Root node containing the complete hierarchy
+     * Converts a flat list of lines into a tree structure based on their levels.
+     * This is the core of the "block" sorting logic.
+     * @param {string[]} lines - The lines of text to process.
+     * @returns {TreeNode} The root of the constructed tree.
      */
     buildTree(lines: string[]): TreeNode {
-        const root = new TreeNode(null, -1); // Virtual root with lowest possible level
-        const stack: TreeNode[] = [root];
-
+        const root = new TreeNode(null, -1);
+        const stack: TreeNode[] = [root]; // A stack to keep track of the current parent node.
         lines.forEach(line => {
             const level = this.getLevel(line);
             const node = new TreeNode(line, level);
-
-            // Pop stack until we find the correct parent (level < current level)
+            // Pop from the stack until we find the correct parent for the current node.
             while (stack[stack.length - 1].level >= level) stack.pop();
-
-            // Add node to current parent and push as potential future parent
             stack[stack.length - 1].children.push(node);
             stack.push(node);
         });
-
         return root;
     }
 
-    /**
-     * Flattens a tree structure back to a linear array of lines.
-     * Performs depth-first traversal to maintain hierarchical ordering.
-     */
+    /** Converts a tree structure back into a flat list of lines. */
     flattenTree(node: TreeNode): string[] {
-        const lines: string[] = [];
-        if (node.line !== null) lines.push(node.line);
-        node.children.forEach(child => lines.push(...this.flattenTree(child)));
-        return lines;
+        const out: string[] = [];
+        if (node.line !== null) out.push(node.line);
+        node.children.forEach(c => out.push(...this.flattenTree(c)));
+        return out;
     }
 
-    /* ------------------ HEADINGS (top-level heading reordering) ------------------ */
+    /** ------------------ Heading Helpers ------------------ */
 
     /**
-     * Core heading transformation engine that groups content by top-level headings.
-     * Finds the shallowest heading level and treats those as primary sections.
-     * Each section includes the heading and all content until the next same-level heading.
-     * 
-     * @param orgText - Original text to process
-     * @param orderer - Function to reorder the array of heading blocks
-     * @returns Reordered text with heading sections rearranged
+     * A generic processor for heading-based operations. It splits the text into blocks,
+     * where each block consists of a top-level heading and all the content following it.
+     * @param {string} orgText - The original text selection.
+     * @param {(blocks: Block[]) => Promise<Block[]>} orderer - An async function to re-order the blocks.
+     * @returns {Promise<string>} The re-ordered text.
      */
-    transformHeadings(orgText: string, orderer: (blocks: Block[]) => Block[]): string {
+    async transformHeadings(orgText: string, orderer: (blocks: Block[]) => Promise<Block[]>): Promise<string> {
         const lines = orgText.split("\n");
 
-        // Find the minimum heading level present (e.g., if we have ## and ###, minLevel = 2)
+        // First, find the minimum heading level in the selection (e.g., h2, h3).
         let minLevel = Infinity;
         for (const l of lines) {
             const m = l.match(/^(\s*#+)\s/);
             if (m) minLevel = Math.min(minLevel, m[1].trim().length);
         }
-        if (minLevel === Infinity) return orgText; // No headings found, return unchanged
+        // If no headings are found, there's nothing to do.
+        if (minLevel === Infinity) return orgText;
 
-        // Group content into blocks based on top-level headings
         const blocks: Block[] = [];
         let cur: Block | null = null;
-
         for (const line of lines) {
             const m = line.match(/^(\s*#+)\s/);
             const lvl = m ? m[1].trim().length : null;
-
+            // A new block starts when we encounter a line with the minimum heading level.
             if (lvl === minLevel) {
-                // Start new block for top-level heading
                 if (cur) blocks.push(cur);
                 cur = { heading: line, lines: [line] };
             } else {
-                // Add content to current block (or create anonymous block for leading content)
+                // Handle content before the first heading.
                 if (!cur) cur = { heading: "", lines: [] };
                 cur.lines.push(line);
             }
         }
         if (cur) blocks.push(cur);
 
-        // Apply ordering transformation and rejoin
-        const ordered = orderer(blocks);
+        const ordered = await orderer(blocks);
         return ordered.map(b => b.lines.join("\n")).join("\n");
     }
 
-    /** Lexically sorts top-level heading sections */
-    lexisortHeadings(t: string): string {
-        const locale = this.getLocale();
-        const options = { sensitivity: this.settings.caseSensitive ? "case" : "base" } as const;
-        return this.transformHeadings(t, blocks =>
-            blocks.slice().sort((a, b) => a.heading.localeCompare(b.heading, locale, options))
-        );
+    // --- Heading Command Implementations ---
+
+    async lexisortHeadings(t: string): Promise<string> {
+        return this.transformHeadings(t, async (blocks) => {
+            const entries = await Promise.all(blocks.map(b => this.getRenderCacheEntry(b.heading)));
+            const items = blocks.map((b, i) => ({ b, rendered: entries[i].renderedText, i }));
+            items.sort((a, b) => {
+                const cmp = a.rendered.localeCompare(b.rendered, this.getLocale(), { sensitivity: this.settings.caseSensitive ? "variant" : "base" });
+                return cmp !== 0 ? cmp : a.i - b.i;
+            });
+            return items.map(it => it.b);
+        });
     }
 
-    /** Sorts top-level heading sections by visual width */
-    sortHeadings(t: string): string {
-        return this.transformHeadings(t, blocks =>
-            blocks.slice().sort((a, b) => this.realLineWidth(a.heading) - this.realLineWidth(b.heading))
-        );
+    async sortHeadings(t: string): Promise<string> {
+        return this.transformHeadings(t, async (blocks) => {
+            const entries = await Promise.all(blocks.map(b => this.getRenderCacheEntry(b.heading)));
+            const items = blocks.map((b, i) => ({ b, width: entries[i].width, i }));
+            items.sort((a, b) => (a.width - b.width) || (a.i - b.i));
+            return items.map(it => it.b);
+        });
     }
 
-    /** Randomly shuffles top-level heading sections */
-    shuffleHeadings(t: string): string {
-        return this.transformHeadings(t, blocks => this.shuffleArray(blocks.slice()));
+    async reverseHeadings(t: string): Promise<string> {
+        return this.transformHeadings(t, async (blocks) => blocks.slice().reverse());
     }
 
-    /** Reverses the order of top-level heading sections */
-    reverseHeadings(t: string): string {
-        return this.transformHeadings(t, blocks => blocks.slice().reverse());
+    async shuffleHeadings(t: string): Promise<string> {
+        return this.transformHeadings(t, async (blocks) => this.shuffleArray(blocks.slice()));
     }
 }
 
-/* -------------------- Helper Types & Classes -------------------- */
+/* -------------------- Helper Types -------------------- */
 
-/**
- * Tree node for representing hierarchical document structure.
- * Used in block-level operations to maintain parent-child relationships.
- */
+/** Represents a node in the hierarchical tree for block-level sorting. */
 class TreeNode {
-    /** The text content of this node (null for virtual root) */
     line: string | null;
-
-    /** Hierarchical level (lower = higher in hierarchy) */
     level: number;
-
-    /** Child nodes at deeper indentation/heading levels */
     children: TreeNode[];
-
     constructor(line: string | null, level: number) {
         this.line = line;
         this.level = level;
@@ -586,84 +547,61 @@ class TreeNode {
     }
 }
 
-/**
- * Represents a heading section for top-level heading operations.
- * Contains the heading line and all associated content.
- */
+/** Represents a block of text for heading-level sorting. */
 interface Block {
-    /** The heading text (empty string for content before first heading) */
-    heading: string;
-
-    /** All lines in this section, including the heading itself */
-    lines: string[];
+    heading: string; // The heading line that defines the block.
+    lines: string[];   // All lines belonging to this block, including the heading.
 }
 
-/* -------------------- Settings UI Tab -------------------- */
+/* -------------------- Settings UI -------------------- */
 
 /**
- * Settings configuration interface for the plugin.
- * Provides UI controls for all plugin options with dynamic visibility.
+ * @class MySettingsTab
+ * Creates the settings user interface for the plugin.
  */
 class MySettingsTab extends PluginSettingTab {
     plugin: lineArrange;
+    constructor(app: App, plugin: lineArrange) { super(app, plugin); this.plugin = plugin; }
 
-    constructor(app: App, plugin: lineArrange) {
-        super(app, plugin);
-        this.plugin = plugin;
-    }
-
-    /**
-     * Builds and displays the settings interface.
-     * Dynamically shows/hides controls based on current selections.
-     */
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-
         containerEl.createEl("h2", { text: "Sorting Options" });
 
-        /** Case Sensitivity Toggle */
         new Setting(containerEl)
             .setName("Respect Case Sensitivity (in lexisort)")
-            .setDesc("If enabled, sorting distinguishes uppercase from lowercase letters.")
+            .setDesc("If enabled, sorting distinguishes uppercase from lowercase.")
             .addToggle(t => t.setValue(this.plugin.settings.caseSensitive).onChange(async (v) => {
                 this.plugin.settings.caseSensitive = v;
                 await this.plugin.saveSettings();
             }));
 
-        /** Blank Line Preservation Setting */
         new Setting(containerEl)
             .setName('Preserve Blanks (during line sorting)')
             .setDesc('If enabled, blank lines remain in place. If disabled, blank lines are moved to the top during line operations.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.preserveBlankLines)
-                .onChange(async (value) => {
-                    this.plugin.settings.preserveBlankLines = value;
-                    await this.plugin.saveSettings();
-                }));
+            .addToggle(toggle => toggle.setValue(this.plugin.settings.preserveBlankLines).onChange(async (value) => {
+                this.plugin.settings.preserveBlankLines = value;
+                await this.plugin.saveSettings();
+            }));
 
-        /** Font Source Selection for Width Calculations */
         new Setting(containerEl)
             .setName("Font And Size Source")
             .setDesc("Determines the font used when calculating visual line width.")
             .addDropdown(drop => {
-                drop.addOption("theme", "Obsidian theme");
-                drop.addOption("editor", "Editor font");
+                drop.addOption("theme", "Obsidian Interface");
                 drop.addOption("custom", "Custom…");
-
                 drop.setValue(this.plugin.settings.fontSource || "theme");
-
                 drop.onChange(async (value) => {
-                    this.plugin.settings.fontSource = value as "theme" | "editor" | "custom";
+                    this.plugin.settings.fontSource = value as "theme" | "custom";
                     await this.plugin.saveSettings();
-                    this.display(); // Re-render to show/hide custom font input
+                    this.display(); // Redraw the settings tab to show/hide the custom font field.
                 });
             });
 
-        // Custom font input - only shown when "custom" is selected
+        // This setting only appears if the user selects "Custom" for the font source.
         if (this.plugin.settings.fontSource === "custom") {
             new Setting(containerEl)
-                .setName("Custom Font For Comparison")
+                .setName("Custom Font String")
                 .setDesc("Enter a CSS font string (e.g., '16px Fira Code' or '1rem Inter').")
                 .addText(text => {
                     text.setPlaceholder("e.g., 16px Fira Code")
@@ -677,13 +615,14 @@ class MySettingsTab extends PluginSettingTab {
 
         // Predefined locale options for quick selection
         const quickLocales = ["en", "fr", "de", "es"];
+        let initial = "custom";
 
         /** Text Locale Selection */
         new Setting(containerEl)
-            .setName("Text Locale For Comparison")
-            .setDesc("Controls how text is compared when sorting (affects alphabetical order). Defaults to Obsidian's interface language if empty.")
+            .setName("Text Locale")
+            .setDesc("Controls how text is compared when sorting (affects lexisort). Defaults to Obsidian's interface language if empty.")
             .addDropdown(drop => {
-                drop.addOption("default", "System default (Obsidian UI language)");
+                drop.addOption("default", "System default");
                 drop.addOption("en", "English (en)");
                 drop.addOption("fr", "French (fr)");
                 drop.addOption("de", "German (de)");
@@ -692,10 +631,8 @@ class MySettingsTab extends PluginSettingTab {
 
                 // Determine current selection based on stored value
                 const cur = this.plugin.settings.myLocale?.trim() || "";
-                let initial = "default";
                 if (cur === "") initial = "default";
                 else if (quickLocales.includes(cur)) initial = cur;
-                else initial = "custom";
 
                 drop.setValue(initial);
 
@@ -713,15 +650,22 @@ class MySettingsTab extends PluginSettingTab {
             });
 
         // Custom locale input - only shown when "custom" is selected
-        if (this.plugin.settings.myLocale && !["", "en", "fr", "de", "es"].includes(this.plugin.settings.myLocale)) {
+        if (initial === "custom") {
             new Setting(containerEl)
                 .setName("Custom Locale")
-                .setDesc("Enter a BCP-47 locale (e.g. 'en-GB', 'fr-CA'). Leave empty to use the system default.")
+                .setDesc("Enter a BCP-47 locale (e.g. 'sv', 'ja'). Leave empty to use the system default.")
                 .addText(text => {
                     text.setPlaceholder("e.g. en-GB")
-                        .setValue("")
+                        .setValue(this.plugin.isValidLocale(this.plugin.settings.myLocale) ? this.plugin.settings.myLocale : "")
                         .onChange(async (v) => {
-                            this.plugin.settings.myLocale = v.trim();
+                            v = v.trim();
+                            if (this.plugin.isValidLocale(v)) {
+                                text.inputEl.style.border = "1px solid green";
+                                this.plugin.settings.myLocale = v;
+                            } else {
+                                text.inputEl.style.border = "1px solid red";
+                                this.plugin.settings.myLocale = "";
+                            }
                             await this.plugin.saveSettings();
                         });
                 });
