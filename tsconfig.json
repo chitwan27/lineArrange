@@ -12,8 +12,8 @@
     "isolatedModules": true,
     "strictNullChecks": true,
     "lib": [
-      "DOM",
-      "ES2021"
+      "ES2021",
+      "DOM"
     ]
   },
   "include": [
