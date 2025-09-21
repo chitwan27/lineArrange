@@ -130,7 +130,6 @@ export default class lineArrange extends Plugin {
      */
     isValidLocale(tag: string | null | undefined): boolean {
         const t = (tag || "").trim();
-        if (t === "") return true; // empty = system default, treat as valid
 
         // Defensive: ensure Intl is available
         if (typeof Intl === "undefined" || !Intl.Collator || !Intl.getCanonicalLocales) {
