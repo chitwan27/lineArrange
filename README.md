@@ -1,127 +1,159 @@
-# Line Arrange - Obsidian Plugin
+# Line Arrange – Obsidian Plugin
 
 ## Overview
 
-Line Arrange is an Obsidian plugin that allows users to rearrange lines or blocks of text in various ways, including sorting, reversing, and shuffling. Users can perform these operations based on visual width or alphabetical order.
+Line Arrange is an [Obsidian](https://obsidian.md) plugin that lets you rearrange lines, blocks, or headings in different ways: **sorting, reversing, and shuffling**.
+Sorting can be done alphabetically or by **visual width** (how wide the text looks on screen).
+
+---
 
 ## Features
 
-### Line-Based Operations
+### Line Operations
 
-- **Sort Lines by Width**: Arrange selected lines based on their visual length.
+Operate on a **flat selection of lines**. Hierarchy is ignored; each line is treated individually.
 
-  <img src=".\assets\sorted.png" alt="Sorted Lines" style="width: 50%; height: auto;" loading="lazy" />
+* **Sort lines by width** – order by rendered text width
 
-- **Sort Lines Lexically**: Arrange selected lines in alphanumerical order.
+  <img src="./assets/sorted.png" alt="" style="width: 45%; height: auto;" loading="lazy" />
 
-  <img src=".\assets\lexisrted.png" alt="Lexisorted Lines" style="width: 50%; height: auto;" loading="lazy" />
+* **Sort lines lexically** – order alphabetically (A → Z)
 
-- **Shuffle Lines**: Randomize the order of selected lines.
+  <img src="./assets/lexisrted.png" alt="" style="width: 45%; height: auto;" loading="lazy" />
 
-  <img src=".\assets\shuffled.png" alt="Shuffled Lines" style="width: 50%; height: auto;" loading="lazy" />
+* **Shuffle lines** – randomize order
 
-- **Reverse Lines**: Flip the order of selected lines.
+  <img src="./assets/shuffled.png" alt="" style="width: 45%; height: auto;" loading="lazy" />
 
-  <img src=".\assets\reversed.png" alt="Reversed Lines" style="width: 50%; height: auto;" loading="lazy" />
+* **Reverse lines** – flip order top-to-bottom
 
-### Block-Based Operations
+  <img src="./assets/reversed.png" alt="" style="width: 45%; height: auto;" loading="lazy" />
 
-- **Sort Blocks by Visual Width**: Arrange selected blocks hierarchically based on their visual length.
-  <img src=".\assets\sorted_blocks.jpg" alt="Sorted Blocks" style="width: 60%; height: auto;" loading="lazy" />
-- **Sort Blocks Lexically**: Arrange selected blocks hierarchically in alphanumerical order.
-  <img src=".\assets\lexisrted_blocks.jpg" alt="Lexisorted Blocks" style="width: 60%; height: auto;" loading="lazy" />
-- **Shuffle Blocks**: Randomly reorder selected blocks, but maintain hierarchy.
-  <img src=".\assets\shuffled_blocks.jpg" alt="Shuffled Blocks" style="width: 60%; height: auto;" loading="lazy" />
-- **Reverse Blocks**: Flip the order of selected text blocks, but maintain hierarchy.
-  <img src=".\assets\reversed_blocks.jpg" alt="Reversed Blocks" style="width: 60%; height: auto;" loading="lazy" />
+---
 
-  
-### Heading-Based Operations
+### Block Operations
 
-- **Sort Headings by Width**: Arrange top-level headings (and their content) by the visual width of the heading line.
+Operate on **paragraphs, lists, or sections**.
+Block hierarchy (headings, indentation) is preserved.
 
-- **Sort Headings Lexically**: Alphabetically sort the top-level headings and keep subcontent intact.
+* **Sort blocks by width** – order blocks by their widest line
 
-- **Shuffle Headings**: Randomly rearrange the top-level headings and their content.
+  <img src="./assets/sorted_blocks.jpg" alt="" style="width: 45%; height: auto;" loading="lazy" />
 
-- **Reverse Headings**: Flip the order of top-level headings without disturbing hierarchy.
+* **Sort blocks lexically** – alphabetical order by first line of block
 
-> Only the shallowest-level headings in the selection are reordered. All subheadings and content below each are preserved.
+  <img src="./assets/lexisrted_blocks.jpg" alt="" style="width: 45%; height: auto;" loading="lazy" />
 
+* **Shuffle blocks** – randomize block order while keeping sub-blocks grouped
 
-## How Block Sorting Works
+  <img src="./assets/shuffled_blocks.jpg" alt="" style="width: 45%; height: auto;" loading="lazy" />
 
-A **block** is a group of lines separated by blank lines, such as paragraphs, lists, or sections under a heading. When sorting a text block, its hierarchical structure is maintained:
+* **Reverse blocks** – flip sibling blocks while preserving nesting
 
-- Headings stay at the top of their section.
+  <img src="./assets/reversed_blocks.jpg" alt="" style="width: 45%; height: auto;" loading="lazy" />
 
-- Indented content (lists, subheadings) stays within its parent section.
+---
 
-- Sorting happens within each level without breaking structure.
+#### How Block Sorting Works
 
-- Reversing flips the order of blocks while keeping child items grouped.
+A **block** = a group of lines separated by blank lines (paragraph, list, or heading section).
 
-**Limitations**: The block commands may not work as expected with horizantal rules, tables, code blocks, or complex nested formatting.
+When rearranging blocks:
+
+* Headings stay at the top of their section.
+* Indented or nested items remain with their parent.
+* Sorting/shuffling happens within each level.
+* Reversing flips sibling order but keeps children attached.
+
+> Blocks are treated as **structural units** separated by blank lines.
+> Nesting and indentation remain intact.
+
+**Limitations**: Complex elements (horizontal rules, tables, code blocks, deeply nested structures) may not behave as expected.
+
+---
+
+### Heading Operations
+
+Operate only on **top-level headings in your selection**.
+The heading itself determines the order; everything beneath each heading (subheadings, paragraphs, lists) stays attached.
+
+* **Sort headings by width** – order by rendered heading width
+* **Sort headings lexically** – alphabetical order by heading text
+* **Shuffle headings** – randomize heading order
+* **Reverse headings** – flip heading order
+
+> Subheadings and content remain intact under their parent heading.
+> These commands only affect **the selected heading level** (shallowest).
+
+---
 
 ## Usage
 
-1. Open a note and select the lines you want to arrange.
+1. Select the lines or blocks you want to arrange.
 
-   <img src=".\assets\select.png" alt="Select Lines Usage" style="width: 50%; height: auto;" loading="lazy" />
+  <img src="./assets/select.png" alt="Select Lines Usage" style="width: 50%; height: auto;" loading="lazy" />
 
-2. Use the command palette (`Ctrl/Cmd + P`) and type command:
+2. Open the **Command Palette** (`Ctrl/Cmd + P`) and run a command such as:
 
-   - `Sort lines` to arrange lines based on their apparent width.
+   * `Sort lines` – arranges lines by visual width.
 
-   <img src=".\assets\sort_lines.png" alt="Sort Lines Usage" style="width: 50%; height: auto;" loading="lazy" />
+    <img src="./assets/sort_lines.png" alt="Sort Lines Usage" style="width: 45%; height: auto;" loading="lazy" />
+
+---
 
 ## List of Commands
 
-- **Lexisort lines**
-  - Action: Lexically sorts the lines in the selected text.
+### Lines
 
-- **Reverse lines**
-  - Action: Reverses the order of the lines in the selected text.
+* `Lexisort lines` – alphabetically sorts selected lines
+* `Reverse lines` – reverses line order
+* `Sort lines` – sorts lines by visual width
+* `Shuffle lines` – randomizes line order
 
-- **Sort lines**
-  - Action: Sorts the lines in the selected text.
+### Headings
 
-- **Shuffle lines**
-  - Action: Shuffles the lines in the selected text.
+* `Lexisort headings` – alphabetically sorts top-level headings
+* `Reverse headings` – reverses heading order
+* `Sort headings` – sorts headings by visual width
+* `Shuffle headings` – randomizes heading order
 
-- **Lexisort headings**
-  - Action: Lexically sorts the top-level headings in the selected text.
+### Blocks
 
-- **Reverse headings**
-  - Action: Reverses the order of top-level headings in the selected text.
+* `Lexisort blocks` – alphabetically sorts text blocks
+* `Reverse blocks` – reverses sibling block order
+* `Sort blocks` – sorts blocks by visual width
+* `Shuffle blocks` – randomizes block order
 
-- **Sort headings**
-  - Action: Sorts top-level headings in the selected text based on their visual width.
-
-- **Shuffle headings**
-  - Action: Shuffles the top-level headings in the selected text.
-
-- **Lexisort blocks**
-  - Action: Lexically sorts the blocks in the selected text.
-
-- **Reverse blocks**
-  - Action: Reverses the order of the blocks in the selected text.
-
-- **Sort blocks**
-  - Action: Sorts the blocks in the selected text.
-
-- **Shuffle blocks**
-  - Action: Shuffles the blocks in the selected text.
+---
 
 ## Installation
 
-1. **From within Obsidian**:
-   - Open Settings.
-   - Navigate to the Community plugins section.
-   - Search for "Line Arrange".
-   - Click "Install" and then "Enable".
+### From within Obsidian
 
-2. **Manual Installation**:
-   - Download the latest release from the [GitHub releases page](https://github.com/chitwan27/lineArrange/releases).
-   - Extract the contents to your Obsidian plugins folder: `YourVault/.obsidian/plugins/lineArrange`.
-   - Enable the plugin in the Obsidian settings.
+1. Open **Settings → Community plugins**.
+2. Search for **Line Arrange**.
+3. Click **Install**, then **Enable**.
+
+### Manual installation
+
+1. Download the latest release from [GitHub Releases](https://github.com/chitwan27/lineArrange/releases).
+2. Extract into your vault at:
+
+  ```bash
+  YourVault/.obsidian/plugins/lineArrange
+  ```
+
+3. Enable the plugin in Obsidian settings.
+
+---
+
+## Notes
+
+* Supports **configurable locales** for lexical sorting (so A–Z order respects your language/region).
+* Works best in **source mode** or when selections are cleanly separated.
+
+---
+
+## Contributing
+
+If you find a bug or have a feature request, open an issue on [GitHub](https://github.com/chitwan27/lineArrange).
