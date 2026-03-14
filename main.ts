@@ -1,4 +1,15 @@
-import { App, Editor, Plugin, PluginSettingTab, Setting, MarkdownRenderer, Component, EventRef } from 'obsidian';
+import { App, Editor, Plugin, PluginSettingTab, Setting, MarkdownRenderer, Component, EventRef, Menu, MenuItem } from 'obsidian';
+
+/**
+ * Extends Obsidian's MenuItem typing to expose the undocumented
+ * submenu API used internally by Obsidian. This allows TypeScript
+ * to compile without errors while using the runtime functionality.
+ */
+declare module "obsidian" {
+    interface MenuItem {
+        setSubmenu(): Menu;
+    }
+}
 
 /**
  * @file This file contains the complete source code for the "Line Arrange" Obsidian plugin.
@@ -98,6 +109,100 @@ export default class lineArrange extends Plugin {
 
         // Add the settings tab to the Obsidian settings panel.
         this.addSettingTab(new MySettingsTab(this.app, this));
+
+        /** ------------------ Editor Context Menu ------------------ */
+
+        /**
+         * Adds the plugin's commands to the editor's right-click context menu.
+         * A single submenu ("Line Arrange") is used to avoid cluttering the
+         * main menu while maintaining reliable hover behavior.
+         */
+        this.registerEvent(
+            this.app.workspace.on("editor-menu", (menu: Menu, editor: Editor) => {
+
+                // Only show the menu when text is selected.
+                if (!editor.somethingSelected()) return;
+
+                /**
+                 * Returns the current editor selection.
+                 */
+                const selection = () => editor.getSelection();
+
+                /**
+                 * Executes a transformation and replaces the current selection.
+                 */
+                const replace = (fn: (s: string) => Promise<string>) =>
+                    async () => editor.replaceSelection(await fn.call(this, selection()));
+
+                menu.addItem((rootItem: MenuItem) => {
+
+                    rootItem
+                        .setTitle("Line Arrange")
+                        .setIcon("list-ordered");
+
+                    const sub = rootItem.setSubmenu();
+
+                    /* -------- Lines -------- */
+
+                    sub.addItem((item: MenuItem) =>
+                        item.setTitle("Lexisort lines").onClick(replace(this.lexisortLines))
+                    );
+
+                    sub.addItem((item: MenuItem) =>
+                        item.setTitle("Sort lines").onClick(replace(this.sortLines))
+                    );
+
+                    sub.addItem((item: MenuItem) =>
+                        item.setTitle("Shuffle lines").onClick(replace(this.shuffleLines))
+                    );
+
+                    sub.addItem((item: MenuItem) =>
+                        item.setTitle("Reverse lines").onClick(replace(this.reverseLines))
+                    );
+
+                    sub.addSeparator();
+
+                    /* -------- Blocks -------- */
+
+                    sub.addItem((item: MenuItem) =>
+                        item.setTitle("Lexisort blocks").onClick(replace(this.lexisortBlocks))
+                    );
+
+                    sub.addItem((item: MenuItem) =>
+                        item.setTitle("Sort blocks").onClick(replace(this.sortBlocks))
+                    );
+
+                    sub.addItem((item: MenuItem) =>
+                        item.setTitle("Shuffle blocks").onClick(replace(this.shuffleBlocks))
+                    );
+
+                    sub.addItem((item: MenuItem) =>
+                        item.setTitle("Reverse blocks").onClick(replace(this.reverseBlocks))
+                    );
+
+                    sub.addSeparator();
+
+                    /* -------- Headings -------- */
+
+                    sub.addItem((item: MenuItem) =>
+                        item.setTitle("Lexisort headings").onClick(replace(this.lexisortHeadings))
+                    );
+
+                    sub.addItem((item: MenuItem) =>
+                        item.setTitle("Sort headings").onClick(replace(this.sortHeadings))
+                    );
+
+                    sub.addItem((item: MenuItem) =>
+                        item.setTitle("Shuffle headings").onClick(replace(this.shuffleHeadings))
+                    );
+
+                    sub.addItem((item: MenuItem) =>
+                        item.setTitle("Reverse headings").onClick(replace(this.reverseHeadings))
+                    );
+                });
+            })
+        );
+
     }
 
     /**
