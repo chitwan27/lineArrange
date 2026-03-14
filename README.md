@@ -91,13 +91,29 @@ The heading itself determines the order; everything beneath each heading (subhea
 
 1. Select the lines or blocks you want to arrange.
 
-  <img src="./assets/select.png" alt="Select Lines Usage" style="width: 50%; height: auto;" loading="lazy" />
+<img src="./assets/select.png" alt="Select Lines Usage" style="width: 50%; height: auto;" loading="lazy" />
 
-2. Open the **Command Palette** (`Ctrl/Cmd + P`) and run a command such as:
+2. Run a command using one of the following methods:
 
-   * `Sort lines` – arranges lines by visual width.
+### Command Palette (`Ctrl/Cmd + P`)
 
-    <img src="./assets/sort_lines.png" alt="Sort Lines Usage" style="width: 45%; height: auto;" loading="lazy" />
+Open the command palette and run a command such as:
+
+* `Sort lines` – arranges lines by visual width.
+
+<img src="./assets/sort_lines.png" alt="Sort Lines Usage" style="width: 45%; height: auto;" loading="lazy" />
+
+### Editor Context Menu (Right-Click)
+
+You can also **right-click the editor** and choose:
+
+```txt
+Line Arrange >
+```
+
+Then select the desired operation.
+
+<img src="./assets/context_menu.png" alt="Context Menu Usage" style="width: 45%; height: auto;" loading="lazy" />
 
 ---
 
@@ -149,8 +165,10 @@ The heading itself determines the order; everything beneath each heading (subhea
 
 ## Notes
 
-* Supports **configurable locales** for lexical sorting (so A–Z order respects your language/region).
 * Works best in **source mode** or when selections are cleanly separated.
+* Any blank lines are appended to the above element them in block and heading mode.
+* Supports **configurable locales** for lexical sorting (so A–Z order respects your language/region).
+* Ordered lists may show incorrect numbering after rearranging because this plugin does not modify their indices.
 
 ---
 
