@@ -316,6 +316,60 @@ export default class lineArrange extends Plugin {
         return out;
     }
 
+    /** ------------------ Ordered List Utilities ------------------ */
+
+    /**
+     * If every line in the array is a valid Markdown ordered list item (e.g. "1. text" or "1) text"),
+     * returns the starting number of the first item. Otherwise returns null.
+     * This is used to detect a clean ordered list before sorting so the start number
+     * can be re-applied to the first line of the sorted output.
+     *
+     * @param {string[]} lines - The lines to check.
+     * @returns {number | null} The starting number, or null if not a complete ordered list.
+     */
+    private getListStartNum(lines: string[]): number | null {
+        if (lines.length === 0) return null;
+        if (!lines.every(l => /^\s*\d+[.)]\s/.test(l))) return null;
+        return parseInt(lines[0].match(/\d+/)?.[0] ?? "1");
+    }
+
+    /**
+     * Replaces the leading number on the first line of a sorted ordered list
+     * with the saved start number. Obsidian then increments all subsequent
+     * items automatically from that number.
+     * Preserves leading whitespace and the separator style (. or )).
+     *
+     * @param {string[]} lines - The sorted lines to fix up.
+     * @param {number} startNum - The number to place on the first line.
+     * @returns {string[]} The lines with the first item's number corrected.
+     */
+    private applyListStartNum(lines: string[], startNum: number): string[] {
+        if (lines.length === 0) return lines;
+        return [
+            lines[0].replace(/^(\s*)\d+([.)])(\s)/, `$1${startNum}$2$3`),
+            ...lines.slice(1)
+        ];
+    }
+
+    /**
+     * Tree-specific equivalent of applyListStartNum. Takes the full children array,
+     * renumbers every child's line sequentially starting from startNum, and returns
+     * the array. Mutates nodes in place since TreeNode lines are managed by reference.
+     * Unlike the line-level version, this renumbers ALL children because Obsidian does
+     * not auto-increment indices in raw text during block-level operations.
+     *
+     * @param {TreeNode[]} children - The reordered children array.
+     * @param {number} startNum - The number to place on the first child's line.
+     * @returns {TreeNode[]} The same children array with all lines renumbered sequentially.
+     */
+    private applyListStartNumToChildren(children: TreeNode[], startNum: number): TreeNode[] {
+        if (children.length === 0) return children;
+        children.forEach((child, i) => {
+            child.line = (child.line || "").replace(/^(\s*)\d+([.)])(\s)/, `$1${startNum + i}$2$3`);
+        });
+        return children;
+    }
+
     /** ------------------ Unified Cache ------------------ */
 
     /**
@@ -378,18 +432,22 @@ export default class lineArrange extends Plugin {
     /**
      * A generic processor for line-based operations. It handles splitting text into lines
      * and managing blank lines according to the `preserveBlankLines` setting.
+     * After ordering, if the lines form a complete ordered list, the starting number
+     * is preserved from the original input.
      * @param {string} orgText - The original text selection.
      * @param {(lines: string[]) => Promise<string[]>} orderer - An async function that takes an array of lines and returns them in a new order.
      * @returns {Promise<string>} The re-ordered text.
      */
     private async processLines(orgText: string, orderer: (lines: string[]) => Promise<string[]>): Promise<string> {
         const lines = orgText.split("\n");
+
         // If not preserving blanks, separate blank lines, sort the non-blanks, and prepend the blanks.
         if (!this.settings.preserveBlankLines) {
-            const blanks = lines.filter(l => l.trim() === "");
             const nonBlanks = lines.filter(l => l.trim() !== "");
+            const startNum = this.getListStartNum(nonBlanks);
             const ordered = await orderer(nonBlanks);
-            return [...blanks, ...ordered].join("\n").trimEnd();
+            const final = startNum !== null ? this.applyListStartNum(ordered, startNum) : ordered;
+            return [...final].join("\n").trimEnd();
         }
 
         // If preserving blanks, sort contiguous blocks of non-blank lines.
@@ -397,8 +455,10 @@ export default class lineArrange extends Plugin {
         let buffer: string[] = [];
         const flush = async () => {
             if (buffer.length > 0) {
+                const startNum = this.getListStartNum(buffer);
                 const ordered = await orderer(buffer);
-                result.push(...ordered);
+                const final = startNum !== null ? this.applyListStartNum(ordered, startNum) : ordered;
+                result.push(...final);
                 buffer = [];
             }
         };
@@ -453,25 +513,25 @@ export default class lineArrange extends Plugin {
     // --- Block command implementations ---
 
     async sortBlocks(orgText: string): Promise<string> {
-        const tree = this.buildTree(orgText.split("\n"));
+        const tree = this.buildTree(orgText.split("\n").filter(l => l.trim() !== ""));
         await this.sortTreeByWidth(tree);
         return this.flattenTree(tree).join("\n");
     }
 
     async lexisortBlocks(orgText: string): Promise<string> {
-        const tree = this.buildTree(orgText.split("\n"));
+        const tree = this.buildTree(orgText.split("\n").filter(l => l.trim() !== ""));
         await this.lexiSortTree(tree);
         return this.flattenTree(tree).join("\n");
     }
 
     async reverseBlocks(orgText: string): Promise<string> {
-        const tree = this.buildTree(orgText.split("\n"));
+        const tree = this.buildTree(orgText.split("\n").filter(l => l.trim() !== ""));
         await this.reverseTree(tree);
         return this.flattenTree(tree).join("\n");
     }
 
     async shuffleBlocks(orgText: string): Promise<string> {
-        const tree = this.buildTree(orgText.split("\n"));
+        const tree = this.buildTree(orgText.split("\n").filter(l => l.trim() !== ""));
         await this.shuffleTree(tree);
         return this.flattenTree(tree).join("\n");
     }
@@ -480,17 +540,18 @@ export default class lineArrange extends Plugin {
 
     async sortTreeByWidth(node: TreeNode): Promise<void> {
         if (!node.children.length) return;
-        // The same stable sort pattern is applied to the children of the current node.
+        const startNum = this.getListStartNum(node.children.map(c => c.line || ""));
         const entries = await Promise.all(node.children.map(c => this.getRenderCacheEntry(c.line || "")));
         const items = node.children.map((c, i) => ({ c, width: entries[i].width, i }));
         items.sort((a, b) => (a.width - b.width) || (a.i - b.i));
         node.children = items.map(it => it.c);
-        // Recurse to sort the children of each child node.
+        if (startNum !== null) node.children = this.applyListStartNumToChildren(node.children, startNum);
         for (const child of node.children) await this.sortTreeByWidth(child);
     }
 
     async lexiSortTree(node: TreeNode): Promise<void> {
         if (!node.children.length) return;
+        const startNum = this.getListStartNum(node.children.map(c => c.line || ""));
         const entries = await Promise.all(node.children.map(c => this.getRenderCacheEntry(c.line || "")));
         const items = node.children.map((c, i) => ({ c, rendered: entries[i].renderedText, i }));
         items.sort((a, b) => {
@@ -498,16 +559,23 @@ export default class lineArrange extends Plugin {
             return cmp !== 0 ? cmp : a.i - b.i;
         });
         node.children = items.map(it => it.c);
+        if (startNum !== null) node.children = this.applyListStartNumToChildren(node.children, startNum);
         for (const child of node.children) await this.lexiSortTree(child);
     }
 
     async reverseTree(node: TreeNode): Promise<void> {
+        if (!node.children.length) return;
+        const startNum = this.getListStartNum(node.children.map(c => c.line || ""));
         node.children.reverse();
+        if (startNum !== null) node.children = this.applyListStartNumToChildren(node.children, startNum);
         for (const child of node.children) await this.reverseTree(child);
     }
 
     async shuffleTree(node: TreeNode): Promise<void> {
+        if (!node.children.length) return;
+        const startNum = this.getListStartNum(node.children.map(c => c.line || ""));
         node.children = this.shuffleArray(node.children);
+        if (startNum !== null) node.children = this.applyListStartNumToChildren(node.children, startNum);
         for (const child of node.children) await this.shuffleTree(child);
     }
 
@@ -669,7 +737,7 @@ class MySettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Preserve Blanks (during line sorting)')
-            .setDesc('If enabled, blank lines remain in place. If disabled, blank lines are moved to the top during line operations.')
+            .setDesc('If enabled, blank lines remain in place and sorting happens around them. If disabled, blank lines are ignored.')
             .addToggle(toggle => toggle.setValue(this.plugin.settings.preserveBlankLines).onChange(async (value) => {
                 this.plugin.settings.preserveBlankLines = value;
                 await this.plugin.saveSettings();

@@ -165,10 +165,8 @@ Then select the desired operation.
 
 ## Notes
 
-* Works best in **source mode** or when selections are cleanly separated.
-* Any blank lines are appended to the element above them in block and heading mode.
+* Works best in **source mode** or when selections are clean.
 * Supports **configurable locales** for lexical sorting (so A–Z order respects your language/region).
-* Ordered lists may show incorrect numbering after rearranging because this plugin does not modify their indices.
 
 ---
 
