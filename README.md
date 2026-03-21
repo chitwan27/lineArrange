@@ -56,17 +56,17 @@ Block hierarchy (headings, indentation) is preserved.
 
 #### How Block Sorting Works
 
-A **block** = a group of lines separated by blank lines (paragraph, list, or heading section).
+A **block** = a top-level line together with all its indented children.
 
 When rearranging blocks:
 
-* Headings stay at the top of their section.
-* Indented or nested items remain with their parent.
-* Sorting/shuffling happens within each level.
-* Reversing flips sibling order but keeps children attached.
+* Indented or nested items always stay attached to their parent.
+* Sorting, shuffling, and reversing happen independently at each indentation level.
+* Blank lines within a block selection are discarded.
+* Numbered lists are automatically renumbered after reordering.
 
-> Blocks are treated as **structural units** separated by blank lines.
-> Nesting and indentation remain intact.
+> Blocks are treated as **hierarchical units** defined by indentation.
+> The tree structure is preserved — only sibling order changes.
 
 **Limitations**: Complex elements (horizontal rules, tables, code blocks, deeply nested structures) may not behave as expected.
 
